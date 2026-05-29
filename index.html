@@ -104,22 +104,28 @@ let lbLoaded=false;
 function saveAll(){save('coins',coins);save('owned_ships',ownedShips);save('sel_ship',selShip);save('nickname',nickname);}
 
 // ── Leaderboard storage ────────────────────────────────────────────────────
+// ── Supabase Leaderboard ───────────────────────────────────────────────────
+const SUPA_URL='https://ljwkqphuvklutmacagca.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqd2txcGh1dmtsdXRtYWNhZ2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMTY1MzUsImV4cCI6MjA5NTU5MjUzNX0.cntBFqPLOx9BQ7CGbaTzLzjKsIaR8bdeWZNHGAac3PI';
+
 async function loadLeaderboard(){
   try{
-    const r=await window.storage.get('nova_lb',true);
-    leaderboard=r?JSON.parse(r.value):[];
+    const res=await fetch(`${SUPA_URL}/rest/v1/scores?select=name,score,km&order=score.desc&limit=20`,{
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    });
+    if(res.ok){leaderboard=await res.json();}else{leaderboard=[];}
   }catch(e){leaderboard=[];}
   lbLoaded=true;
 }
+
 async function submitScore(name,sc2,km2){
   try{
-    const r=await window.storage.get('nova_lb',true);
-    let lb=r?JSON.parse(r.value):[];
-    lb.push({name,score:sc2,km:km2,date:Date.now()});
-    lb.sort((a,b)=>b.score-a.score);
-    lb=lb.slice(0,20);
-    await window.storage.set('nova_lb',JSON.stringify(lb),true);
-    leaderboard=lb;
+    await fetch(`${SUPA_URL}/rest/v1/scores`,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({name,score:sc2,km:km2})
+    });
+    await loadLeaderboard();
   }catch(e){}
 }
 loadLeaderboard();
