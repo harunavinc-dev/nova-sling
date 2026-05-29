@@ -2,7 +2,7 @@
   "name": "Nova Sling",
   "short_name": "Nova Sling",
   "description": "Gezegenden gezegene fırlayan uzay oyunu",
-  "start_url": "/nova-sling/",
+  "start_url": "/",
   "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#000005",
