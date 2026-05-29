@@ -608,7 +608,7 @@ function die(reason){
   const msgs=T_.death;
   deathMsg=T_.death[reason]||T_.death.planet;
   emitSpark(probe.x,probe.y,80,reason==='blackhole'?'#cc00ff':reason==='asteroid'?'#ffaa00':'#ff4400',6);
-  if(nickname&&score>0)submitScore(nickname,score,scoreKm);
+  if(score>0)submitScore(nickname||'Anonim',score,scoreKm);
 }
 
 // ── Update ─────────────────────────────────────────────────────────────────
