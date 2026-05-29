@@ -1,0 +1,3460 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NOVA SLING</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif}
+canvas{display:block;position:fixed;top:0;left:0;touch-action:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<!-- Premium modal -->
+<div id="premium-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,10,0.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;">
+  <div style="background:rgba(10,6,20,0.97);border:2px solid #ffaa00;border-radius:18px;padding:28px 24px;width:min(320px,88vw);text-align:center;box-shadow:0 0 40px #ffaa0055;">
+    <div style="font-size:32px;margin-bottom:8px;">👑</div>
+    <div id="pm-name" style="color:#ffcc44;font-size:clamp(13px,4vw,18px);font-weight:900;letter-spacing:1px;margin-bottom:6px;"></div>
+    <div id="pm-price" style="color:#ffffff;font-size:clamp(18px,5vw,26px);font-weight:900;margin-bottom:8px;"></div>
+    <div style="color:rgba(200,180,255,0.65);font-size:clamp(9px,2.5vw,12px);margin-bottom:20px;line-height:1.6;">Bu gemi premium bir içeriktir.<br>Yakında uygulama mağazalarında<br>satın alınabilecek!</div>
+    <button id="pm-close" style="background:rgba(0,30,60,0.9);border:1.5px solid #00ffff;border-radius:10px;color:#00ffff;cursor:pointer;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;font-size:clamp(11px,3vw,14px);font-weight:900;padding:12px 0;width:100%;letter-spacing:1px;">TAMAM</button>
+  </div>
+</div>
+<div id="nick-overlay" style="position:fixed;inset:0;background:rgba(0,0,10,0.97);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;display:none;">
+  <!-- Logo -->
+  <div style="color:#00ffff;font-size:clamp(22px,6vw,36px);font-weight:900;text-shadow:0 0 30px #00ffff,0 0 60px #00ffff44;letter-spacing:4px;margin-bottom:4px;">NOVA SLING</div>
+
+  <!-- Language selector -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:320px;margin-bottom:6px;" id="lang-btns">
+    <button class="lang-btn" data-lang="tr">🇹🇷 TR</button>
+    <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
+    <button class="lang-btn" data-lang="es">🇪🇸 ES</button>
+    <button class="lang-btn" data-lang="fr">🇫🇷 FR</button>
+    <button class="lang-btn" data-lang="de">🇩🇪 DE</button>
+    <button class="lang-btn" data-lang="pt">🇧🇷 PT</button>
+    <button class="lang-btn" data-lang="ru">🇷🇺 RU</button>
+    <button class="lang-btn" data-lang="ar">🇸🇦 AR</button>
+  </div>
+  <style>
+    .lang-btn{background:rgba(0,20,40,0.8);border:1.5px solid rgba(0,200,255,0.3);border-radius:8px;color:rgba(200,230,255,0.7);cursor:pointer;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;font-size:11px;font-weight:700;padding:6px 10px;transition:all 0.15s;}
+    .lang-btn:hover,.lang-btn.active{background:rgba(0,60,100,0.9);border-color:#00ffff;color:#ffffff;box-shadow:0 0 10px #00ffff44;}
+    .lang-btn.active{border-color:#00ffff;box-shadow:0 0 14px #00ffff66;}
+  </style>
+
+  <div id="nick-label" style="color:rgba(180,210,255,0.75);font-size:clamp(10px,2.8vw,13px);letter-spacing:1px;margin-top:2px;">Takma adını seç</div>
+  <input id="nick-input" maxlength="16" placeholder="PİLOT ADI..."
+    style="background:rgba(0,20,40,0.92);border:2px solid #00ffff;border-radius:10px;color:#ffffff;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;font-size:clamp(13px,4vw,20px);font-weight:700;padding:14px 20px;text-align:center;outline:none;width:min(280px,78vw);box-shadow:0 0 20px #00ffff55,inset 0 0 10px #00ffff11;letter-spacing:2px;" />
+  <button id="nick-btn"
+    style="background:rgba(0,50,25,0.92);border:2px solid #22dd66;border-radius:12px;color:#22dd66;cursor:pointer;font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;font-size:clamp(12px,3.2vw,16px);font-weight:900;padding:14px 0;width:min(280px,78vw);box-shadow:0 0 18px #22dd6655;letter-spacing:2px;">
+    ▶&nbsp;&nbsp;OYNAMAYA BAŞLA
+  </button>
+</div>
+<script>
+const cv=document.getElementById('c');
+const cx=cv.getContext('2d');
+// Patch prototype to prevent negative radius errors globally
+(()=>{
+  const _orig=CanvasRenderingContext2D.prototype.createRadialGradient;
+  CanvasRenderingContext2D.prototype.createRadialGradient=function(x0,y0,r0,x1,y1,r1){
+    return _orig.call(this,x0,y0,Math.max(0,r0||0),x1,y1,Math.max(0.001,r1||0.001));
+  };
+})();
+cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
+const DPR=Math.min(window.devicePixelRatio||1,3);
+let W=window.innerWidth;
+let H=window.innerHeight;
+cv.width=Math.round(W*DPR);
+cv.height=Math.round(H*DPR);
+cv.style.width=W+'px';
+cv.style.height=H+'px';
+cx.scale(DPR,DPR);
+window.addEventListener('resize',()=>{
+  W=window.innerWidth;H=window.innerHeight;
+  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  cx.scale(DPR,DPR);
+  cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
+});
+cv.addEventListener('wheel',e=>{if(phase==='SHOP'){const _smax=Math.max(0,Math.ceil(SHIPS.length/2)*(168+8)+120-window.innerHeight);shopScroll=Math.max(0,Math.min(shopScroll+e.deltaY*0.5,_smax));}},{passive:true});
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+const rnd=(a,b)=>Math.random()*(b-a)+a;
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const d2=(ax,ay,bx,by)=>Math.sqrt((ax-bx)**2+(ay-by)**2);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const snap=(v,g=1)=>Math.round(v/g)*g; // pixel snap
+
+// Snap coords for crisp pixel drawing
+const px=(v)=>Math.floor(v)+0.5;
+const pxr=(v)=>Math.round(v);
+
+function load(k,d){try{const v=localStorage.getItem('ns_'+k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem('ns_'+k,JSON.stringify(v));}catch(e){}}
+
+let coins=load('coins',0);
+let ownedShips=load('owned_ships',['arrow']);
+let selShip=load('sel_ship','arrow');
+let nickname=load('nickname','');
+let leaderboard=[];
+let lbLoaded=false;
+function saveAll(){save('coins',coins);save('owned_ships',ownedShips);save('sel_ship',selShip);save('nickname',nickname);}
+
+// ── Leaderboard storage ────────────────────────────────────────────────────
+async function loadLeaderboard(){
+  try{
+    const r=await window.storage.get('nova_lb',true);
+    leaderboard=r?JSON.parse(r.value):[];
+  }catch(e){leaderboard=[];}
+  lbLoaded=true;
+}
+async function submitScore(name,sc2,km2){
+  try{
+    const r=await window.storage.get('nova_lb',true);
+    let lb=r?JSON.parse(r.value):[];
+    lb.push({name,score:sc2,km:km2,date:Date.now()});
+    lb.sort((a,b)=>b.score-a.score);
+    lb=lb.slice(0,20);
+    await window.storage.set('nova_lb',JSON.stringify(lb),true);
+    leaderboard=lb;
+  }catch(e){}
+}
+loadLeaderboard();
+
+// ── Shop data ──────────────────────────────────────────────────────────────
+// ── Language System ────────────────────────────────────────────────────────
+const LANGS={
+  tr:{
+    score:'SKOR',stars:'YILDIZLAR',play:'OYNA',shop:'MA\u011eAZA',leaderboard:'L\u0130DERL\u0130K',
+    pilot:'P\u0130LOT',nickname:'Takma ad\u0131n\u0131 gir',nickBtn:'\u25b6  OYNAMAYA BA\u015eLA',nickPlaceholder:'P\u0130LOT ADI...',
+    changeNick:'de\u011fi\u015ftir',selected:'SE\u00c7\u0130LD\u0130',select:'SE\u00c7',free:'BEDAVA',locked:'K\u0130L\u0130TL\u0130',
+    resume:'DEVAM ET',paused:'DURAKLATILDI',retry:'TEKRAR OYNA',back:'\u2190 GER\u0130',
+    lbTitle:'L\u0130DERL\u0130K TABLOSU',lbEmpty:'Hen\u00fcz kay\u0131t yok. \u0130lk sen ol!',lbYou:'\u2190 SEN',
+    ships:'UZAY ARA\u00c7LARI',
+    death:{planet:'GEM\u0130 GEZEGEN\u0130 \u00c7ARPTI',oob:'GEM\u0130 UZAYDA KAYBOLDU',burn:'G\u00dcNE\u015e SICAKLI\u011eI',blackhole:'KARA DEL\u0130K YUTTU',asteroid:'ASTERO\u0130D \u0130SABET'},
+    premium:'PREM\u0130UM',premiumMsg:'Bu gemi premium i\u00e7eriktir.\nYak\u0131nda uygulama ma\u011fazalar\u0131nda\nsat\u0131n al\u0131nabilecek!',ok:'TAMAM',
+    hint:'TUTA & BIRAK \u2192 FIRLA',earned:'KAZANILAN',total:'Toplam',newRecord:'\u1f3c6 YEN\u0130 REKOR!',zoneBanner:'B\u00d6LGE',zones:['NEBULA SAHASI','ASTER\u00d6\u0130T KU\u015eA\u011e\u0130','KARA DEL\u0130K ALANI','KAOS B\u00d6LGES\u0130'],
+  },
+  en:{
+    score:'SCORE',stars:'STARS',play:'PLAY',shop:'SHOP',leaderboard:'LEADERBOARD',
+    pilot:'PILOT',nickname:'Enter your nickname',nickBtn:'\u25b6  START PLAYING',nickPlaceholder:'PILOT NAME...',
+    changeNick:'change',selected:'SELECTED',select:'SELECT',free:'FREE',locked:'LOCKED',
+    resume:'RESUME',paused:'PAUSED',retry:'PLAY AGAIN',back:'\u2190 BACK',
+    lbTitle:'LEADERBOARD',lbEmpty:'No records yet. Be the first!',lbYou:'\u2190 YOU',
+    ships:'SPACECRAFT',
+    death:{planet:'SHIP HIT A PLANET',oob:'SHIP LOST IN SPACE',burn:'SOLAR HEAT',blackhole:'BLACK HOLE',asteroid:'ASTEROID HIT'},
+    premium:'PREMIUM',premiumMsg:'This ship is premium content.\nComing soon to app stores!',ok:'OK',
+    hint:'HOLD & RELEASE \u2192 LAUNCH',earned:'EARNED',total:'Total',newRecord:'\u1f3c6 NEW RECORD!',zoneBanner:'ZONE',zones:['NEBULA FIELD','ASTEROID BELT','BLACK HOLE ZONE','CHAOS ZONE'],
+  },
+  es:{
+    score:'PUNTOS',stars:'ESTRELLAS',play:'JUGAR',shop:'TIENDA',leaderboard:'CLASIFICACI\u00d3N',
+    pilot:'PILOTO',nickname:'Elige tu apodo',nickBtn:'\u25b6  COMENZAR',nickPlaceholder:'NOMBRE PILOTO...',
+    changeNick:'cambiar',selected:'ELEGIDO',select:'ELEGIR',free:'GRATIS',locked:'BLOQUEADO',
+    resume:'CONTINUAR',paused:'PAUSADO',retry:'REINTENTAR',back:'\u2190 ATR\u00c1S',
+    lbTitle:'CLASIFICACI\u00d3N',lbEmpty:'Sin registros. \u00a1S\u00e9 el primero!',lbYou:'\u2190 T\u00da',
+    ships:'NAVES',
+    death:{planet:'NAVE CHOC\u00d3 UN PLANETA',oob:'NAVE PERDIDA',burn:'CALOR SOLAR',blackhole:'AGUJERO NEGRO',asteroid:'IMPACTO ASTEROIDE'},
+    premium:'PREMIUM',premiumMsg:'Esta nave es contenido premium.\n\u00a1Pr\u00f3ximamente en las tiendas!',ok:'OK',
+    hint:'MANT\u00c9N Y SUELTA \u2192 LANZAR',earned:'GANADO',total:'Total',newRecord:'\u1f3c6 \u00a1NUEVO R\u00c9CORD!',zoneBanner:'ZONA',zones:['CAMPO NEBULOSA','CINTUR\u00d3N ASTEROIDE','ZONA AGUJERO NEGRO','ZONA CAOS'],
+  },
+  fr:{
+    score:'SCORE',stars:'\u00c9TOILES',play:'JOUER',shop:'BOUTIQUE',leaderboard:'CLASSEMENT',
+    pilot:'PILOTE',nickname:'Choisis ton pseudo',nickBtn:'\u25b6  COMMENCER',nickPlaceholder:'NOM PILOTE...',
+    changeNick:'changer',selected:'S\u00c9LECTIONN\u00c9',select:'CHOISIR',free:'GRATUIT',locked:'BLOQU\u00c9',
+    resume:'REPRENDRE',paused:'EN PAUSE',retry:'REJOUER',back:'\u2190 RETOUR',
+    lbTitle:'CLASSEMENT',lbEmpty:'Aucun record. Sois le premier!',lbYou:'\u2190 TOI',
+    ships:'VAISSEAUX',
+    death:{planet:'VAISSEAU A HEURT\u00c9 UNE PLAN\u00c8TE',oob:'VAISSEAU PERDU',burn:'CHALEUR SOLAIRE',blackhole:'TROU NOIR',asteroid:'IMPACT AST\u00c9RO\u00cfDE'},
+    premium:'PREMIUM',premiumMsg:'Ce vaisseau est un contenu premium.\nBient\u00f4t disponible!',ok:'OK',
+    hint:'MAINTENIR ET L\u00c2CHER \u2192 LANCER',earned:'GAGN\u00c9',total:'Total',newRecord:'\u1f3c6 NOUVEAU RECORD!',zoneBanner:'ZONE',zones:['CHAMP N\u00c9BULEUSE','CEINTURE AST\u00c9RO\u00cfDE','ZONE TROU NOIR','ZONE CHAOS'],
+  },
+  de:{
+    score:'PUNKTE',stars:'STERNE',play:'SPIELEN',shop:'SHOP',leaderboard:'RANGLISTE',
+    pilot:'PILOT',nickname:'W\u00e4hle deinen Spitznamen',nickBtn:'\u25b6  LOSSPIELEN',nickPlaceholder:'PILOTNAME...',
+    changeNick:'\u00e4ndern',selected:'AUSGEW\u00c4HLT',select:'AUSW\u00c4HLEN',free:'KOSTENLOS',locked:'GESPERRT',
+    resume:'WEITER',paused:'PAUSE',retry:'NOCHMAL',back:'\u2190 ZUR\u00dcCK',
+    lbTitle:'RANGLISTE',lbEmpty:'Noch keine Eintr\u00e4ge. Sei der Erste!',lbYou:'\u2190 DU',
+    ships:'RAUMSCHIFFE',
+    death:{planet:'SCHIFF TRAF EINEN PLANETEN',oob:'SCHIFF VERLOREN',burn:'SONNENHITZE',blackhole:'SCHWARZES LOCH',asteroid:'ASTEROIDENEINSCHLAG'},
+    premium:'PREMIUM',premiumMsg:'Dieses Schiff ist Premium-Inhalt.\nBald verf\u00fcgbar!',ok:'OK',
+    hint:'HALTEN UND LOSLASSEN \u2192 STARTEN',earned:'VERDIENT',total:'Gesamt',newRecord:'\u1f3c6 NEUER REKORD!',zoneBanner:'ZONE',zones:['NEBELFELD','ASTEROIDENG\u00dcRTEL','SCHWARZES-LOCH-ZONE','CHAOSZONE'],
+  },
+  pt:{
+    score:'PONTOS',stars:'ESTRELAS',play:'JOGAR',shop:'LOJA',leaderboard:'CLASSIFICA\u00c7\u00c3O',
+    pilot:'PILOTO',nickname:'Escolha seu apelido',nickBtn:'\u25b6  COME\u00c7AR',nickPlaceholder:'NOME PILOTO...',
+    changeNick:'alterar',selected:'SELECIONADO',select:'SELECIONAR',free:'GR\u00c1TIS',locked:'BLOQUEADO',
+    resume:'CONTINUAR',paused:'PAUSADO',retry:'TENTAR NOVAMENTE',back:'\u2190 VOLTAR',
+    lbTitle:'CLASSIFICA\u00c7\u00c3O',lbEmpty:'Sem registros. Seja o primeiro!',lbYou:'\u2190 VOC\u00ca',
+    ships:'NAVES',
+    death:{planet:'NAVE ATINGIU UM PLANETA',oob:'NAVE PERDIDA',burn:'CALOR SOLAR',blackhole:'BURACO NEGRO',asteroid:'IMPACTO DE ASTEROIDE'},
+    premium:'PREMIUM',premiumMsg:'Esta nave \u00e9 conte\u00fado premium.\nEm breve nas lojas!',ok:'OK',
+    hint:'SEGURE E SOLTE \u2192 LAN\u00c7AR',earned:'GANHO',total:'Total',newRecord:'\u1f3c6 NOVO RECORDE!',zoneBanner:'ZONA',zones:['CAMPO NEBULOSA','CINTUR\u00c3O ASTEROIDE','ZONA BURACO NEGRO','ZONA CAOS'],
+  },
+  ru:{
+    score:'\u041e\u0427\u041a\u0418',stars:'\u0417\u0412\u0401\u0417\u0414\u042b',play:'\u0418\u0413\u0420\u0410\u0422\u042c',shop:'\u041c\u0410\u0413\u0410\u0417\u0418\u041d',leaderboard:'\u0420\u0415\u0419\u0422\u0418\u041d\u0413',
+    pilot:'\u041f\u0418\u041b\u041e\u0422',nickname:'\u0412\u0432\u0435\u0434\u0438 \u043d\u0438\u043a\u043d\u0435\u0439\u043c',nickBtn:'\u25b6  \u041d\u0410\u0427\u0410\u0422\u042c \u0418\u0413\u0420\u0423',nickPlaceholder:'\u0418\u041c\u042f \u041f\u0418\u041b\u041e\u0422\u0410...',
+    changeNick:'\u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c',selected:'\u0412\u042b\u0411\u0420\u0410\u041d\u041e',select:'\u0412\u042b\u0411\u0420\u0410\u0422\u042c',free:'\u0411\u0415\u0421\u041f\u041b\u0410\u0422\u041d\u041e',locked:'\u0417\u0410\u041a\u0420\u042b\u0422\u041e',
+    resume:'\u041f\u0420\u041e\u0414\u041e\u041b\u0416\u0418\u0422\u042c',paused:'\u041f\u0410\u0423\u0417\u0410',retry:'\u0418\u0413\u0420\u0410\u0422\u042c \u0421\u041d\u041e\u0412\u0410',back:'\u2190 \u041d\u0410\u0417\u0410\u0414',
+    lbTitle:'\u0420\u0415\u0419\u0422\u0418\u041d\u0413',lbEmpty:'\u0417\u0430\u043f\u0438\u0441\u0435\u0439 \u043d\u0435\u0442. \u0411\u0443\u0434\u044c \u043f\u0435\u0440\u0432\u044b\u043c!',lbYou:'\u2190 \u0422\u042b',
+    ships:'\u041a\u041e\u0420\u0410\u0411\u041b\u0418',
+    death:{planet:'\u041a\u041e\u0420\u0410\u0411\u041b\u042c \u0412\u0420\u0415\u0417\u0410\u041b\u0421\u042f \u0412 \u041f\u041b\u0410\u041d\u0415\u0422\u0423',oob:'\u041a\u041e\u0420\u0410\u0411\u041b\u042c \u041f\u041e\u0422\u0415\u0420\u042f\u041d',burn:'\u0421\u041e\u041b\u041d\u0415\u0427\u041d\u042b\u0419 \u0416\u0410\u0420',blackhole:'\u0427\u0401\u0420\u041d\u0410\u042f \u0414\u042b\u0420\u0410',asteroid:'\u0423\u0414\u0410\u0420 \u0410\u0421\u0422\u0415\u0420\u041e\u0418\u0414\u0410'},
+    premium:'\u041f\u0420\u0415\u041c\u0418\u0423\u041c',premiumMsg:'\u042d\u0442\u043e\u0442 \u043a\u043e\u0440\u0430\u0431\u043b\u044c \u2014 \u043f\u0440\u0435\u043c\u0438\u0443\u043c \u043a\u043e\u043d\u0442\u0435\u043d\u0442.\n\u0421\u043a\u043e\u0440\u043e \u0432 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430\u0445!',ok:'\u041e\u041a',
+    hint:'\u0423\u0414\u0415\u0420\u0416\u0418\u0412\u0410\u0419 \u0418 \u041e\u0422\u041f\u0423\u0421\u0422\u0418 \u2192 \u0417\u0410\u041f\u0423\u0421\u041a',earned:'\u041f\u041e\u041b\u0423\u0427\u0415\u041d\u041e',total:'\u0418\u0442\u043e\u0433\u043e',newRecord:'\u1f3c6 \u041d\u041e\u0412\u042b\u0419 \u0420\u0415\u041a\u041e\u0420\u0414!',zoneBanner:'\u0417\u041e\u041d\u0410',zones:['\u041d\u0415\u0411\u0423\u041b\u0410','\u041f\u041e\u042f\u0421 \u0410\u0421\u0422\u0415\u0420\u041e\u0418\u0414\u041e\u0412','\u0427\u0415\u0420\u041d\u0410\u042f \u0414\u042b\u0420\u0410','\u0425\u0410\u041e\u0421'],
+  },
+  ar:{
+    score:'\u0646\u0642\u0627\u0637',stars:'\u0646\u062c\u0648\u0645',play:'\u0627\u0644\u0639\u0628',shop:'\u0645\u062a\u062c\u0631',leaderboard:'\u062a\u0631\u062a\u064a\u0628',
+    pilot:'\u0637\u064a\u0627\u0631',nickname:'\u0627\u062e\u062a\u0631 \u0627\u0633\u0645\u0643',nickBtn:'\u25b6  \u0627\u0628\u062f\u0623',nickPlaceholder:'\u0627\u0633\u0645 \u0627\u0644\u0637\u064a\u0627\u0631...',
+    changeNick:'\u062a\u063a\u064a\u064a\u0631',selected:'\u0645\u062d\u062f\u062f',select:'\u0627\u062e\u062a\u0631',free:'\u0645\u062c\u0627\u0646\u064a',locked:'\u0645\u0642\u0641\u0644',
+    resume:'\u0627\u0633\u062a\u0623\u0646\u0641',paused:'\u0645\u062a\u0648\u0642\u0641',retry:'\u0627\u0644\u0639\u0628 \u0645\u062c\u062f\u062f\u0627\u064b',back:'\u0631\u062c\u0648\u0639 \u2190',
+    lbTitle:'\u0644\u0648\u062d\u0629 \u0627\u0644\u0635\u062f\u0627\u0631\u0629',lbEmpty:'\u0644\u0627 \u0633\u062c\u0644\u0627\u062a \u0628\u0639\u062f. \u0643\u0646 \u0627\u0644\u0623\u0648\u0644!',lbYou:'\u0623\u0646\u062a \u2190',
+    ships:'\u0627\u0644\u0645\u0631\u0643\u0628\u0627\u062a',
+    death:{planet:'\u0627\u0635\u0637\u062f\u0645\u062a \u0628\u0643\u0648\u0643\u0628',oob:'\u0636\u0627\u0639\u062a \u0641\u064a \u0627\u0644\u0641\u0636\u0627\u0621',burn:'\u062d\u0631\u0627\u0631\u0629 \u0627\u0644\u0634\u0645\u0633',blackhole:'\u062b\u0642\u0628 \u0623\u0633\u0648\u062f',asteroid:'\u0646\u064a\u0632\u0643'},
+    premium:'\u0645\u0645\u064a\u0632',premiumMsg:'\u0647\u0630\u0647 \u0627\u0644\u0645\u0631\u0643\u0628\u0629 \u0645\u062d\u062a\u0648\u0649 \u0645\u0645\u064a\u0632.\n\u0642\u0631\u064a\u0628\u0627\u064b \u0641\u064a \u0627\u0644\u0645\u062a\u0627\u062c\u0631!',ok:'\u0645\u0648\u0627\u0641\u0642',
+    hint:'\u0627\u0636\u063a\u0637 \u062b\u0645 \u0627\u062a\u0631\u0643\u0647 \u0644\u0644\u0625\u0637\u0644\u0627\u0642',earned:'\u0645\u0643\u062a\u0633\u0628',total:'\u0627\u0644\u0645\u062c\u0645\u0648\u0639',newRecord:'\u1f3c6 \u0631\u0642\u0645 \u0642\u064a\u0627\u0633\u064a!',zoneBanner:'\u0645\u0646\u0637\u0642\u0629',zones:['\u062d\u0642\u0644 \u0627\u0644\u0633\u062f\u064a\u0645','\u062d\u0632\u0627\u0645 \u0627\u0644\u0643\u0648\u064a\u0643\u0628\u0627\u062a','\u0645\u0646\u0637\u0642\u0629 \u0627\u0644\u062b\u0642\u0628 \u0627\u0644\u0623\u0633\u0648\u062f','\u0645\u0646\u0637\u0642\u0629 \u0627\u0644\u0641\u0648\u0636\u0649'],
+  },
+};
+
+
+// Auto-detect language
+let langCode=(()=>{
+  const saved=load('lang','');if(saved&&LANGS[saved])return saved;
+  const nav=(navigator.language||'en').toLowerCase().slice(0,2);
+  return LANGS[nav]?nav:'en';
+})();
+let T_=LANGS[langCode];
+function setLang(code){langCode=code;T_=LANGS[code];save('lang',code);applyLangToHTML();}
+function applyLangToHTML(){
+  const ni=document.getElementById('nick-input');
+  const nb=document.getElementById('nick-btn');
+  const nl=document.getElementById('nick-label');
+  if(ni)ni.placeholder=T_.nickPlaceholder;
+  if(nb)nb.textContent=T_.nickBtn;
+  if(nl)nl.textContent=T_.nickname;
+  // Update active lang button
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.lang===langCode);
+  });
+}
+
+// Wire lang buttons
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.addEventListener('click',()=>{setLang(b.dataset.lang);});
+  });
+});
+// Also wire immediately if DOM ready
+document.querySelectorAll('.lang-btn').forEach(b=>{
+  b.addEventListener('click',()=>{setLang(b.dataset.lang);});
+});
+
+// Ship name lookup by language
+const SHIP_NAMES={
+  tr:{arrow:'KEŞİF SONDASI',shuttle:'UZAY MEKİĞİ',ufo:'UFO',fighter:'SAVAŞ JETİ',crystal:'KRİSTAL GEMİ',titan:'TİTAN',lazer:'LAZER GEMİSİ',fuzyon:'FÜZYON GEMİSİ',zaman:'ZAMAN GEMİSİ',ejderha:'EJDERHA',titan2:'TITAN ULTRA',magma:'MAGMA'},
+  en:{arrow:'SCOUT PROBE',shuttle:'SPACE SHUTTLE',ufo:'UFO',fighter:'FIGHTER JET',crystal:'CRYSTAL SHIP',titan:'TITAN',lazer:'LASER CRAFT',fuzyon:'FUSION SHIP',zaman:'TIME VESSEL',ejderha:'DRAGON',titan2:'TITAN ULTRA',magma:'MAGMA'},
+  es:{arrow:'SONDA EXPLORADORA',shuttle:'TRANSBORDADOR',ufo:'OVNI',fighter:'CAZA ESPACIAL',crystal:'NAVE CRISTAL',titan:'TITÁN',lazer:'NAVE LÁSER',fuzyon:'NAVE FUSIÓN',zaman:'NAVE TEMPORAL',ejderha:'DRAGÓN',titan2:'TITÁN ULTRA',magma:'MAGMA'},
+  fr:{arrow:'SONDE SCOUT',shuttle:'NAVETTE',ufo:'OVNI',fighter:'JET DE COMBAT',crystal:'VAISSEAU CRISTAL',titan:'TITAN',lazer:'VAISSEAU LASER',fuzyon:'VAISSEAU FUSION',zaman:'VAISSEAU TEMPOREL',ejderha:'DRAGON',titan2:'TITAN ULTRA',magma:'MAGMA'},
+  de:{arrow:'ERKUNDUNGSSONDE',shuttle:'RAUMFÄHRE',ufo:'UFO',fighter:'KAMPFJET',crystal:'KRISTALLSCHIFF',titan:'TITAN',lazer:'LASERSCHIFF',fuzyon:'FUSIONSSCHIFF',zaman:'ZEITSCHIFF',ejderha:'DRACHE',titan2:'TITAN ULTRA',magma:'MAGMA'},
+  pt:{arrow:'SONDA EXPLORADORA',shuttle:'ÔNIBUS ESPACIAL',ufo:'OVNI',fighter:'CAÇA ESPACIAL',crystal:'NAVE CRISTAL',titan:'TITÃ',lazer:'NAVE LASER',fuzyon:'NAVE FUSÃO',zaman:'NAVE TEMPORAL',ejderha:'DRAGÃO',titan2:'TITAN ULTRA',magma:'MAGMA'},
+  ru:{arrow:'РАЗВЕДЧИК',shuttle:'ШАТТЛ',ufo:'НЛО',fighter:'ИСТРЕБИТЕЛЬ',crystal:'КРИСТАЛЬНЫЙ',titan:'ТИТАН',lazer:'ЛАЗЕРНЫЙ',fuzyon:'ТЕРМОЯДЕРНЫЙ',zaman:'ТЕМПОРАЛЬНЫЙ',ejderha:'ДРАКОН',titan2:'ТИТАН УЛЬТРА',magma:'МАГМА'},
+  ar:{arrow:'مسبار استطلاع',shuttle:'مكوك فضائي',ufo:'طبق طائر',fighter:'مقاتلة فضائية',crystal:'سفينة الكريستال',titan:'تيتان',lazer:'سفينة الليزر',fuzyon:'سفينة الاندماج',zaman:'سفينة الزمن',ejderha:'التنين',titan2:'تيتان الترا',magma:'ماغما'},
+};
+function shipName(id){return (SHIP_NAMES[langCode]||SHIP_NAMES.tr)[id]||id;}
+applyLangToHTML();
+
+
+
+// Update death messages to use language
+// death message is set directly from T_.death in die()
+
+const SHIPS=[
+  {id:'arrow',  name:'\u004b\u0045\u015e\u0130\u0046 SONDASI', price:0,    trailCol:'#00ccff', S:7.5, shopS:13.33},
+  {id:'shuttle',name:'UZAY MEKİĞİ',  price:5000,  trailCol:'#00ff88', S:7.5, shopS:13.33, flipX:true},
+  {id:'ufo',    name:'UFO',           price:8000,  trailCol:'#00ff88', S:7.5, shopS:13.33},
+  {id:'fighter',name:'SAVAŞ JETİ',   price:12000, trailCol:'#ff2244', S:7.5, shopS:13.33, flipX:true, dualExhaust:true},
+  {id:'crystal',name:'KRİSTAL GEMİ', price:20000, trailCol:'#cc88ff', S:7.5, shopS:13.33, flipX:true, dualExhaust:true},
+  {id:'titan',  name:'TİTAN',         price:30000, trailCol:'#ffdd00', S:10,  shopS:17,    quadExhaust:true},
+  {id:'lazer',  name:'LAZER GEMİSİ',  price:40000, trailCol:'#00ffff', S:9,   shopS:15,    flipX:true, dualExhaust:true},
+  {id:'fuzyon', name:'FÜZYON GEMİSİ', price:55000, trailCol:'#4488ff', S:9,   shopS:15,    dualExhaust:true},
+  {id:'zaman',  name:'ZAMAN GEMİSİ',  price:0,    trailCol:'#ffaa00', S:9,   shopS:13,    dualExhaust:true, premium:true, premiumPrice:'₺49,99'},
+  {id:'ejderha',name:'EJDERHA',        price:0,    trailCol:'#aaddff', S:9,   shopS:13,    flipX:true,       premium:true, premiumPrice:'₺49,99'},
+  {id:'titan2', name:'TITAN ULTRA',    price:0,    trailCol:'#ff6600', S:10,  shopS:17,    quadExhaust:true, premium:true, premiumPrice:'₺79,99'},
+  {id:'magma',  name:'MAGMA',          price:0,    trailCol:'#ff3300', S:9,   shopS:15,    premium:true, premiumPrice:'₺79,99'},
+];
+
+// ── Ship drawing handled entirely by canvas (no external sprites) ──────────
+
+// ── Zones ──────────────────────────────────────────────────────────────────
+const ZONES=[
+  {id:0,name:'NEBULA SAHASI',   sub:'Sakin, ama aldatıcı.',     km0:0,   km1:500,
+   sky:'#000008',wc:'#4488ff',types:['blue','blue','blue','blue','red'],
+   sp:[300,540],bc:0.15,ba:[4,8], br:[28,48],gm:1.0,hm:1.0,mult:1},
+  {id:1,name:'ASTEROİT KUŞAĞI',sub:'Taşlar seni sever.',       km0:500, km1:1500,
+   sky:'#04020a',wc:'#ff8800',types:['blue','blue','red','red','black'],
+   sp:[250,460],bc:0.48,ba:[7,14],br:[32,58],gm:1.3,hm:1.4,mult:2},
+  {id:2,name:'KARA DELİK ALANI',sub:'Kaçış yok.',              km0:1500,km1:3000,
+   sky:'#02000a',wc:'#cc00ff',types:['red','red','black','black','black'],
+   sp:[200,360],bc:0.65,ba:[9,16],br:[36,62],gm:1.7,hm:1.8,mult:3},
+  {id:3,name:'KAOS BÖLGESİ',  sub:'Her şey seni öldürmek ister.',km0:3000,km1:Infinity,
+   sky:'#060000',wc:'#ff2200',types:['red','black','black','black','black'],
+   sp:[160,295],bc:0.82,ba:[12,20],br:[40,70],gm:2.4,hm:2.4,mult:5},
+];
+function getZone(km){return ZONES.find(z=>km>=z.km0&&km<z.km1)||ZONES[ZONES.length-1];}
+
+// Planet palettes
+const PPAL={
+  blue: {label:'DÜNYA'},
+  red:  {label:'GÜNEŞ'},
+  black:{label:'KARA DELİK'},
+};
+
+// Solar system planet pool for 'blue' type
+const SOLAR_PLANETS=['earth','mars','jupiter','uranus','saturn','mercury','venus','neptune','moon'];
+// Saturn always has rings; others never get belt
+
+// ── Stars ──────────────────────────────────────────────────────────────────
+// ── Stars ──────────────────────────────────────────────────────────────────
+// ── Stars & Constellations ─────────────────────────────────────────────────
+const STARS=[];
+for(let i=0;i<180;i++){
+  const r=Math.random();
+  STARS.push({
+    nx:(Math.sin(i*127.1)*0.5+0.5),
+    ny:(Math.sin(i*311.7)*0.5+0.5),
+    tx:Math.floor(Math.random()*6),
+    ty:Math.floor(Math.random()*6),
+    bright:r<0.03,
+    medium:r<0.12,
+    sz:r<0.03?1.2:r<0.12?0.8:0.5,
+    twk:Math.random()*Math.PI*2,
+    spd:0.015+Math.random()*0.035, // parallax speed
+    col:['#ffffff','#fff8f0','#f0f0ff','#ffe8d8'][Math.floor(Math.random()*4)],
+    alpha:0.28+Math.random()*0.25,
+  });
+}
+
+const CONST_SHAPES=[
+  [[0,0],[35,-10],[70,0],[18,-58],[55,-62],[32,-95]],
+  [[0,0],[28,-50],[55,-12],[83,-52],[110,0]],
+  [[0,0],[45,-8],[82,4],[120,18],[148,-28],[188,-68],[215,-88]],
+  [[0,0],[18,-45],[55,-65],[95,-52],[122,-8],[48,18]],
+  [[0,0],[8,-35],[25,-62],[42,-82],[48,-108],[40,-132],[22,-148]],
+  [[0,-70],[0,70],[-60,0],[60,0]],
+];
+const CONSTS=CONST_SHAPES.map((pts,i)=>({
+  pts,
+  ax:(Math.sin(i*73.1)*0.5+0.5),
+  ay:(Math.sin(i*137.3)*0.5+0.5),
+  tx:Math.floor(Math.random()*5),
+  ty:Math.floor(Math.random()*5),
+  spd:0.006+Math.random()*0.008,
+  rot:Math.random()*Math.PI*2,
+  sc:0.8+Math.random()*0.5,
+}));
+
+// ── Constants ──────────────────────────────────────────────────────────────
+const PROBE_R=10,ROPE_LEN=230,MAX_SPEED=12.6,TRAIL_LEN=35;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let phase='MENU',shopTab='ships',shopScroll=0;
+
+// ── Nickname overlay ───────────────────────────────────────────────────────
+const nickOverlay=document.getElementById('nick-overlay');
+const nickInput=document.getElementById('nick-input');
+const nickBtn=document.getElementById('nick-btn');
+function showNickOverlay(){
+  nickOverlay.style.display='flex';
+  nickInput.value=nickname||'';
+  setTimeout(()=>{nickInput.focus();nickInput.select();},80);
+}
+function hideNickOverlay(){nickOverlay.style.display='none';}
+nickBtn.addEventListener('click',()=>{
+  const v=nickInput.value.trim().toUpperCase();
+  if(!v)return;
+  nickname=v;saveAll();hideNickOverlay();
+});
+nickInput.addEventListener('keydown',e=>{if(e.key==='Enter')nickBtn.click();});
+nickBtn.addEventListener('mouseenter',()=>{nickBtn.style.background='rgba(0,80,40,0.95)';nickBtn.style.boxShadow='0 0 22px #22dd6688';});
+nickBtn.addEventListener('mouseleave',()=>{nickBtn.style.background='rgba(0,40,20,0.85)';nickBtn.style.boxShadow='0 0 14px #22dd6644';});
+// Show on first load if no nickname
+if(!nickname)showNickOverlay();
+let startY=0;
+let probe={x:0,y:0,vx:0,vy:-4.5,trail:[],trail2:[],trail3:[],trail4:[],ang:Math.PI*1.5};
+let cam={x:0,y:0};
+let planets=[],sparks=[];
+let orb=null,holding=false;
+let score=0,best=load('best',0),scoreKm=0;
+let lastOrbitPlanet=null;
+let flashAlpha=0,flashCol='#ff2200';
+let shakeX=0,shakeY=0,deathMsg='';
+let bgCol='#000008',tBgCol='#000008';
+let curZoneId=-1;
+let announce={on:false,life:0,zone:null,bonus:''};
+let lastT=0,earnedCoins=0;
+let tick=0;
+
+// ── Input ──────────────────────────────────────────────────────────────────
+let pressT=0,pressX=0,pressY=0,moved=false;
+let uiZones=[];
+function regUI(id,x,y,w,h){uiZones.push({id,x,y,w,h});}
+function hitTest(tx,ty){return uiZones.find(z=>tx>=z.x&&tx<=z.x+z.w&&ty>=z.y&&ty<=z.y+z.h);}
+function gp(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
+
+cv.addEventListener('mousedown',e=>{const p=gp(e);holding=true;pressT=Date.now();pressX=p.x;pressY=p.y;moved=false;});
+cv.addEventListener('mousemove',e=>{const p=gp(e);if(Math.hypot(p.x-pressX,p.y-pressY)>12)moved=true;});
+cv.addEventListener('mouseup',e=>{holding=false;const p=gp(e);if(!moved&&Date.now()-pressT<350)tap(p.x,p.y);if(phase==='ORBITING')release();});
+cv.addEventListener('touchstart',e=>{e.preventDefault();const p=gp(e);holding=true;pressT=Date.now();pressX=p.x;pressY=p.y;moved=false;},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();const p=gp(e);if(phase==='SHOP'&&Math.hypot(p.x-pressX,p.y-pressY)>8){const _smax2=Math.max(0,Math.ceil(SHIPS.length/2)*(168+8)+120-window.innerHeight);shopScroll=Math.max(0,Math.min(shopScroll+(pressY-p.y),_smax2));pressX=p.x;pressY=p.y;}if(Math.hypot(p.x-pressX,p.y-pressY)>12)moved=true;},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();holding=false;const p={x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};if(!moved&&Date.now()-pressT<350)tap(p.x,p.y);if(phase==='ORBITING')release();},{passive:false});
+
+// ── Premium modal ──────────────────────────────────────────────────────────
+const premiumModal=document.getElementById('premium-modal');
+const pmName=document.getElementById('pm-name');
+const pmPrice=document.getElementById('pm-price');
+document.getElementById('pm-close').addEventListener('click',hidePremiumModal);
+function showPremiumModal(shipId){
+  const ship=SHIPS.find(s=>s.id===shipId);
+  if(!ship)return;
+  pmName.textContent=ship.name;
+  pmPrice.textContent=ship.premiumPrice||'₺49,99';
+  premiumModal.style.display='flex';
+}
+function hidePremiumModal(){premiumModal.style.display='none';}
+
+let paused=false;
+let pauseLangOpen=false;
+
+function tap(tx,ty){
+  const hit=hitTest(tx,ty);if(!hit)return;const id=hit.id;
+  Audio.click();
+  if(id==='play')initGame();
+  else if(id==='hud_shop'||id==='shop'||id==='dead_shop'){phase='SHOP';shopTab='ships';shopScroll=0;}
+  else if(id.startsWith('premium_ship_')){showPremiumModal(id.slice(13));}
+  else if(id==='premium_modal_close'){hidePremiumModal();}
+  else if(id==='hud_home'){phase='MENU';}
+  else if(id.startsWith('lang_')){setLang(id.slice(5));}
+  else if(id==='leaderboard'){phase='LEADERBOARD';loadLeaderboard();}
+  else if(id==='lb_back'||id==='shop_back')phase='MENU';
+  else if(id==='hud_lang'){paused=true;pauseLangOpen=true;}
+  else if(id==='hud_pause'){paused=!paused;if(!paused)pauseLangOpen=false;}
+  else if(id==='pause_lang_tab'){pauseLangOpen=!pauseLangOpen;}
+  else if(id==='hud_mute'){Audio.muted=!Audio.muted;if(Audio.muted)Audio.blackholeStop();}
+  else if(id==='change_nick'){showNickOverlay();}
+  else if(id==='tab_ships')shopTab='ships';
+  else if(id==='restart')initGame();
+  else if(id.startsWith('buy_ship_')){
+    const sid=id.slice(9),ship=SHIPS.find(s=>s.id===sid);if(!ship)return;
+    if(ownedShips.includes(sid)){selShip=sid;saveAll();}
+    else if(coins>=ship.price){coins-=ship.price;ownedShips.push(sid);selShip=sid;saveAll();}
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function initGame(){
+  score=0;scoreKm=0;lastOrbitPlanet=null;earnedCoins=0;tick=0;
+  startY=H*10;
+  probe={x:W*0.5,y:startY,vx:0,vy:-4.5,trail:[],trail2:[],trail3:[],trail4:[],ang:Math.PI*1.5};
+  cam={x:probe.x-W*0.5,y:probe.y-H*0.65};
+  planets=[];sparks=[];orb=null;curZoneId=-1;
+  bgCol=tBgCol=ZONES[0].sky;
+  announce={on:false,life:0,zone:null,bonus:''};
+  spawnPlanets(probe.y-H*0.6,16);
+  phase='FLYING';checkZone(true);
+  Audio.sling();
+}
+
+// ── Spawn ──────────────────────────────────────────────────────────────────
+function spawnPlanets(topY,n){
+  let cy=topY;
+  let lastType=null;
+  for(let i=0;i<n;i++){
+    const km=Math.max(0,Math.floor((startY-cy)/10));
+    const z=getZone(km);
+    // Pick type — never spawn black hole twice in a row
+    let type;
+    const pool=z.types.filter(t=>!(t==='black'&&lastType==='black'));
+    type=pool[ri(0,pool.length-1)];
+    lastType=type;
+    cy-=rnd(...z.sp);
+    // Enforce minimum gap after black hole
+    if(type==='black')cy-=rnd(80,140);
+    const x=rnd(W*0.1,W*0.9);
+    // Subtype for blue planets
+    const subtype=type==='blue'?SOLAR_PLANETS[ri(0,SOLAR_PLANETS.length-1)]:type;
+    // Size: sun bigger, saturn bigger for rings
+    const r=type==='black'?ri(22,32):type==='red'?ri(44,62):
+      subtype==='jupiter'?ri(36,48):subtype==='saturn'?ri(32,42):
+      subtype==='neptune'?ri(28,36):subtype==='uranus'?ri(26,34):
+      subtype==='mercury'||subtype==='moon'?ri(14,22):ri(22,32);
+    // Belt only on Saturn
+    const hasBelt=subtype==='saturn';
+    const beltR=hasBelt?r+rnd(...z.br):0;
+    const beltAsts=[];
+    if(hasBelt){const nb=ri(...z.ba);for(let j=0;j<nb;j++)beltAsts.push({ang:(j/nb)*Math.PI*2,spd:rnd(0.006,0.024)*(Math.random()<0.5?1:-1),sz:ri(4,9)});}
+    const hasMover=z.id>=2&&Math.random()<0.3;
+    const movers=[];
+    if(hasMover){for(let j=0;j<ri(2,5);j++)movers.push({x:rnd(W*0.05,W*0.95),y:cy+rnd(-150,150),vx:rnd(-1.3,1.3),vy:rnd(-0.5,0.5),sz:ri(7,14)});}
+    planets.push({x,y:cy,r,type,subtype,pal:PPAL[type],
+      gravR:type==='black'?260*z.gm:0,heatR:type==='red'?0.006*z.hm:0,
+      hasBelt,beltR,beltAsts,movers,
+      rotA:rnd(0,Math.PI*2),pulse:rnd(0,Math.PI*2),zid:z.id});
+  }
+}
+
+function checkZone(force=false){
+  const z=getZone(scoreKm);
+  if(z.id!==curZoneId||force){
+    const prev=curZoneId;curZoneId=z.id;tBgCol=z.sky;
+    if(z.id>prev)Audio.zoneChange();
+    if(!force&&prev>=0){
+      const bonus=z.mult*150;score+=bonus;
+      announce={on:true,life:3.5,zone:z,bonus:`+${bonus} BÖLGE BONUSU`};
+      flashAlpha=0.55;flashCol=z.wc;shakeX=rnd(-7,7);shakeY=rnd(-7,7);
+    } else if(force){bgCol=z.sky;announce={on:true,life:2.5,zone:z,bonus:''};}
+  }
+}
+
+// ── Orbit ──────────────────────────────────────────────────────────────────
+const MAX_SPIN_MULT=3.5; // max speed multiplier from spinning
+const SPIN_PER_ROT=0.55; // multiplier gained per full rotation
+
+function tryGrab(){
+  let best_=null,bestD=ROPE_LEN;
+  for(const p of planets){
+    const dd=d2(probe.x,probe.y,p.x,p.y);
+    if(dd<ROPE_LEN&&dd>p.r+PROBE_R*2&&dd<bestD){bestD=dd;best_=p;}
+  }
+  if(best_){
+    const dx=probe.x-best_.x,dy=probe.y-best_.y;
+    const r=Math.sqrt(dx*dx+dy*dy),ang=Math.atan2(dy,dx);
+    let omega=(probe.vx*(-Math.sin(ang))+probe.vy*Math.cos(ang))/r;
+    if(Math.abs(omega)<0.03)omega=0.04*(omega<0?-1:1);
+    omega=clamp(omega,-0.14,0.14);
+    orb={
+      planet:best_,ang,r,omega,heat:0,
+      rotations:0,          // full rotations completed
+      angAccum:0,           // accumulated angle (absolute)
+      spinMult:1.0,         // speed multiplier built up by spinning
+      graceTime: best_.type==='black' ? 1.8 : 0, // black hole escape window (seconds)
+      warned:false,
+    };
+    phase='ORBITING';
+    emitSpark(probe.x,probe.y,14,trailCol(),2.5);
+    if(best_.type==='black')Audio.blackholeStart();
+  }
+}
+
+function release(){
+  if(!orb)return;
+  const{ang,r,omega,spinMult}=orb;
+  // Exit speed boosted by spin multiplier
+  const baseSpd=Math.abs(omega*r);
+  const spd=clamp(baseSpd*spinMult,1.8,MAX_SPEED*spinMult*0.6);
+  const dir=omega>0?1:-1;
+  probe.vx=-Math.sin(ang)*spd*dir;probe.vy=Math.cos(ang)*spd*dir;
+  if(lastOrbitPlanet!==orb.planet)lastOrbitPlanet=orb.planet;
+  score+=getZone(scoreKm).mult;
+  if(orb.rotations>=1)score+=Math.floor(orb.rotations*orb.spinMult*10*getZone(scoreKm).mult);
+  if(orb.planet.type==='black')Audio.blackholeStop();
+  orb=null;phase='FLYING';
+  Audio.sling();
+  emitSpark(probe.x,probe.y,Math.floor(18+spinMult*8),trailCol(),2.5+spinMult);
+}
+
+// ── Particles ──────────────────────────────────────────────────────────────
+const SPARK_MAX=120;
+function emitSpark(x,y,n,col,spd){
+  const add=Math.min(n, SPARK_MAX-sparks.length);
+  for(let i=0;i<add;i++){const a=rnd(0,Math.PI*2);sparks.push({x,y,vx:Math.cos(a)*rnd(0.5,spd),vy:Math.sin(a)*rnd(0.5,spd),life:1,col,sz:ri(2,4)});}
+}
+
+
+let _cachedTrailCol='#00ccff';
+let _cachedTrailShip='';
+let _cachedShipDef=SHIPS[0];
+function trailCol(t){
+  if(selShip!==_cachedTrailShip){
+    _cachedTrailShip=selShip;
+    _cachedShipDef=SHIPS.find(s=>s.id===selShip)||SHIPS[0];
+    _cachedTrailCol=_cachedShipDef.trailCol||'#00ccff';
+  }
+  return _cachedTrailCol;
+}
+function selShipDef(){
+  if(selShip!==_cachedTrailShip)trailCol(0);
+  return _cachedShipDef;
+}
+
+// ── Death ──────────────────────────────────────────────────────────────────
+function die(reason){
+  if(reason==='planet'){Audio.death();emitSpark(probe.x,probe.y,60,'#ff6622',8);emitSpark(probe.x,probe.y,40,'#ffaa00',5);}
+  else if(reason==='oob')Audio.death();
+  else if(reason==='burn'){Audio.heatWarning();setTimeout(()=>Audio.death(),100);emitSpark(probe.x,probe.y,50,'#ff8800',7);}
+  else if(reason==='blackhole'){Audio.blackholeStop();Audio.death();emitSpark(probe.x,probe.y,50,'#cc00ff',6);}
+  else if(reason==='asteroid'){Audio.asteroid();emitSpark(probe.x,probe.y,45,'#ffaa44',7);}
+  if(orb&&orb.planet.type==='black')Audio.blackholeStop();
+  if(score>best){best=score;save('best',best);}
+  earnedCoins=Math.max(5,Math.floor(scoreKm*0.6+score*0.02));
+  coins+=earnedCoins;saveAll();
+  phase='DEAD';orb=null;flashAlpha=1;flashCol='#ff2200';shakeX=rnd(-10,10);shakeY=rnd(-10,10);
+  const msgs=T_.death;
+  deathMsg=T_.death[reason]||T_.death.planet;
+  emitSpark(probe.x,probe.y,80,reason==='blackhole'?'#cc00ff':reason==='asteroid'?'#ffaa00':'#ff4400',6);
+  if(nickname&&score>0)submitScore(nickname,score,scoreKm);
+}
+
+// ── Update ─────────────────────────────────────────────────────────────────
+function update(ts){
+  const dt=Math.min((ts-lastT)/16.67,3);lastT=ts;tick++;
+  if(paused||phase!=='FLYING'&&phase!=='ORBITING')return;
+
+  bgCol=lerpHex(bgCol,tBgCol,0.018);
+  if(announce.on){announce.life-=dt*0.017*60;if(announce.life<=0)announce.on=false;}
+  flashAlpha=Math.max(0,flashAlpha-0.035*dt);
+  shakeX*=Math.pow(0.84,dt);shakeY*=Math.pow(0.84,dt);
+
+  if(phase==='FLYING'){
+    if(holding)tryGrab();
+    for(const p of planets){
+      if(p.type==='black'&&p.gravR>0){
+        const dx=p.x-probe.x,dy=p.y-probe.y,dd=Math.sqrt(dx*dx+dy*dy);
+        if(dd<p.gravR&&dd>1){const f=0.28*(1-dd/p.gravR)*dt;probe.vx+=(dx/dd)*f;probe.vy+=(dy/dd)*f;}
+      }
+    }
+    probe.x+=probe.vx*dt;probe.y+=probe.vy*dt;
+    probe.vx*=Math.pow(0.9985,dt);probe.vy*=Math.pow(0.9985,dt);
+    const spd=Math.sqrt(probe.vx**2+probe.vy**2);if(spd<0.72){const s=0.72/spd;probe.vx*=s;probe.vy*=s;}
+    probe.ang=Math.atan2(probe.vy,probe.vx);
+
+    // Record trail from ship tail, not center
+    const _tS=selShipDef().S||7.5;
+    const _tOff=_tS*4.5*0.3;
+    const _tx=probe.x-Math.cos(probe.ang)*_tOff;
+    const _ty=probe.y-Math.sin(probe.ang)*_tOff;
+    // Dual/quad exhaust for ships with dualExhaust/quadExhaust flag
+    const _shipDef2=selShipDef();
+    const _isDual=_shipDef2?.dualExhaust;
+    const _isQuad=_shipDef2?.quadExhaust;
+    if(_isQuad){
+      const _perp=probe.ang+Math.PI*0.5;
+      const _eOffA=_tS*4.5*0.28; const _eOffB=_tS*4.5*0.09;
+      const pushTrail=(arr,x,y)=>{arr.push({x,y});if(arr.length>TRAIL_LEN)arr.shift();};
+      const cx_=Math.cos(_perp),cy_=Math.sin(_perp);
+      pushTrail(probe.trail, _tx+cx_*_eOffA, _ty+cy_*_eOffA);
+      pushTrail(probe.trail2,_tx+cx_*_eOffB, _ty+cy_*_eOffB);
+      pushTrail(probe.trail3,_tx-cx_*_eOffB, _ty-cy_*_eOffB);
+      pushTrail(probe.trail4,_tx-cx_*_eOffA, _ty-cy_*_eOffA);
+    } else if(_isDual){
+      const _perp=probe.ang+Math.PI*0.5;
+      const _eOff=_tS*4.5*0.22;
+      const _tx2a=_tx+Math.cos(_perp)*_eOff; const _ty2a=_ty+Math.sin(_perp)*_eOff;
+      const _tx2b=_tx-Math.cos(_perp)*_eOff; const _ty2b=_ty-Math.sin(_perp)*_eOff;
+      probe.trail.push({x:_tx2a,y:_ty2a});if(probe.trail.length>TRAIL_LEN)probe.trail.shift();
+      probe.trail2.push({x:_tx2b,y:_ty2b});if(probe.trail2.length>TRAIL_LEN)probe.trail2.shift();
+    } else {
+      probe.trail.push({x:_tx,y:_ty});if(probe.trail.length>TRAIL_LEN)probe.trail.shift();
+    }
+
+    const nkm=Math.max(0,Math.floor((startY-probe.y)/10));
+    const z=getZone(scoreKm);
+    if(nkm>scoreKm){scoreKm=nkm;score=Math.max(score,nkm*z.mult);checkZone();}
+    if(probe.x<-160||probe.x>W+160)die('oob');
+    for(const p of planets){
+      if(d2(probe.x,probe.y,p.x,p.y)<p.r+PROBE_R)die('planet');
+      for(const a of p.beltAsts){const ax=p.x+Math.cos(a.ang)*p.beltR,ay=p.y+Math.sin(a.ang)*p.beltR;if(d2(probe.x,probe.y,ax,ay)<a.sz+PROBE_R)die('asteroid');}
+      for(const mv of p.movers){if(d2(probe.x,probe.y,mv.x,mv.y)<mv.sz+PROBE_R)die('asteroid');}
+    }
+    const top=planets.reduce((m,p)=>p.y<m?p.y:m,probe.y);
+    if(probe.y-H*2<top)spawnPlanets(top,7);
+    planets=planets.filter(p=>p.y<probe.y+H*2.5);
+  } else if(phase==='ORBITING'){
+    const p=orb.planet;
+
+    // Spin-up: angular velocity increases each frame (non-black-hole)
+    if(p.type!=='black'){
+      const sign=orb.omega>0?1:-1;
+      orb.omega+=sign*0.0015*dt;
+      orb.omega=clamp(orb.omega,-0.28,0.28);
+    }
+
+    // Track accumulated angle to count rotations
+    orb.angAccum=(orb.angAccum||0)+Math.abs(orb.omega*dt);
+    const prevRot=Math.floor(orb.rotations||0);
+    orb.rotations=orb.angAccum/(Math.PI*2);
+    if(Math.floor(orb.rotations)>prevRot){
+      orb.spinMult=Math.min(MAX_SPIN_MULT,1+(Math.floor(orb.rotations)*SPIN_PER_ROT));
+      emitSpark(probe.x,probe.y,6,trailCol(),orb.spinMult);
+    }
+
+    orb.ang+=orb.omega*dt;
+    probe.x=p.x+Math.cos(orb.ang)*orb.r;probe.y=p.y+Math.sin(orb.ang)*orb.r;
+    // Ship faces tangent direction of orbit (parallel to planet surface)
+    probe.ang=orb.ang+(orb.omega>0?Math.PI/2:-Math.PI/2);
+
+    // Record trail from ship tail, not center
+    const _tS=selShipDef().S||7.5;
+    const _tOff=_tS*4.5*0.3;
+    const _tx=probe.x-Math.cos(probe.ang)*_tOff;
+    const _ty=probe.y-Math.sin(probe.ang)*_tOff;
+    // Dual/quad exhaust for ships with dualExhaust/quadExhaust flag
+    const _shipDef2=selShipDef();
+    const _isDual=_shipDef2?.dualExhaust;
+    const _isQuad=_shipDef2?.quadExhaust;
+    if(_isQuad){
+      const _perp=probe.ang+Math.PI*0.5;
+      const _eOffA=_tS*4.5*0.28; const _eOffB=_tS*4.5*0.09;
+      const pushTrail=(arr,x,y)=>{arr.push({x,y});if(arr.length>TRAIL_LEN)arr.shift();};
+      const cx_=Math.cos(_perp),cy_=Math.sin(_perp);
+      pushTrail(probe.trail, _tx+cx_*_eOffA, _ty+cy_*_eOffA);
+      pushTrail(probe.trail2,_tx+cx_*_eOffB, _ty+cy_*_eOffB);
+      pushTrail(probe.trail3,_tx-cx_*_eOffB, _ty-cy_*_eOffB);
+      pushTrail(probe.trail4,_tx-cx_*_eOffA, _ty-cy_*_eOffA);
+    } else if(_isDual){
+      const _perp=probe.ang+Math.PI*0.5;
+      const _eOff=_tS*4.5*0.22;
+      const _tx2a=_tx+Math.cos(_perp)*_eOff; const _ty2a=_ty+Math.sin(_perp)*_eOff;
+      const _tx2b=_tx-Math.cos(_perp)*_eOff; const _ty2b=_ty-Math.sin(_perp)*_eOff;
+      probe.trail.push({x:_tx2a,y:_ty2a});if(probe.trail.length>TRAIL_LEN)probe.trail.shift();
+      probe.trail2.push({x:_tx2b,y:_ty2b});if(probe.trail2.length>TRAIL_LEN)probe.trail2.shift();
+    } else {
+      probe.trail.push({x:_tx,y:_ty});if(probe.trail.length>TRAIL_LEN)probe.trail.shift();
+    }
+
+    // Red giant heat
+    if(p.type==='red'){
+      orb.heat+=p.heatR*dt;
+      if(orb.heat>=1){probe.vx=Math.cos(orb.ang)*rnd(4,7)+rnd(-2,2);probe.vy=Math.sin(orb.ang)*rnd(4,7)+rnd(-2,2);emitSpark(probe.x,probe.y,30,'#ff6600',4);Audio.blackholeStop();orb=null;phase='FLYING';}
+    }
+
+    // Black hole: grace period then slow pull
+    if(p.type==='black'){
+      if(orb.graceTime>0){
+        orb.graceTime-=dt;
+        if(orb.graceTime<0.7&&!orb.warned){orb.warned=true;flashAlpha=0.25;flashCol='#cc00ff';}
+      } else {
+        orb.omega*=Math.pow(1.003,dt);
+        orb.r=Math.max(orb.r-0.18*dt,p.r+PROBE_R+2);
+        if(orb.r<=p.r+PROBE_R+3.5)die('blackhole');
+      }
+    }
+
+    if(!holding)release();
+    const nkm=Math.max(0,Math.floor((startY-probe.y)/10));if(nkm>scoreKm){scoreKm=nkm;checkZone();}
+  }
+
+  for(const p of planets){p.rotA+=0.003*dt;p.pulse+=0.03*dt;for(const a of p.beltAsts)a.ang+=a.spd*dt;for(const mv of p.movers){mv.x+=mv.vx*dt;mv.y+=mv.vy*dt;if(mv.x<0||mv.x>W){mv.vx*=-1;mv.x=clamp(mv.x,0,W);}}}
+  cam.x=lerp(cam.x,probe.x-W*0.5,0.06*dt);cam.y=lerp(cam.y,probe.y-H*0.65,0.06*dt);
+  sparks=sparks.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=Math.pow(0.9,dt);s.vy*=Math.pow(0.9,dt);s.life-=0.03*dt;return s.life>0;});
+
+}
+
+function sx(wx){return wx-cam.x+shakeX;}
+function sy(wy){return wy-cam.y+shakeY;}
+
+function lerpHex(a,b,t){
+  const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);
+  const r=Math.round(((pa>>16)&0xff)+t*(((pb>>16)&0xff)-((pa>>16)&0xff)));
+  const g=Math.round(((pa>>8)&0xff)+t*(((pb>>8)&0xff)-((pa>>8)&0xff)));
+  const bl=Math.round((pa&0xff)+t*((pb&0xff)-(pa&0xff)));
+  return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bl.toString(16).padStart(2,'0')}`;
+}
+
+// ── Draw planet — realistic gradients, glow, atmosphere ────────────────────
+function drawPlanet(p,ppx,ppy,t){
+  const r=p.r, sub=p.subtype||p.type;
+  const rot=p.rotA, pulse=0.5+0.5*Math.sin(t*2+p.pulse);
+
+  function RG(x0,y0,r0,x1,y1,r1,...s){
+    const g=cx.createRadialGradient(x0,y0,Math.max(0,r0),x1,y1,Math.max(0.001,r1));
+    for(let i=0;i<s.length;i+=2)g.addColorStop(s[i],s[i+1]);return g;
+  }
+  function LG(x0,y0,x1,y1,...s){
+    const g=cx.createLinearGradient(x0,y0,x1,y1);
+    for(let i=0;i<s.length;i+=2)g.addColorStop(s[i],s[i+1]);return g;
+  }
+  function disc(col){cx.fillStyle=col;cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();}
+  function clip(){cx.save();cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.clip();}
+  function term(str=0.88){
+    cx.fillStyle=RG(ppx+r*0.35,ppy,0,ppx+r*0.1,ppy,r*1.04,
+      0,'transparent',0.45,'rgba(0,0,0,0.1)',0.75,`rgba(0,0,0,${str*0.8})`,1,`rgba(0,0,0,${str})`);
+    disc('');cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();
+  }
+  function spec(ix=-0.38,iy=-0.42,str=0.5){
+    cx.fillStyle=RG(ppx+r*ix,ppy+r*iy,0,ppx+r*ix*0.5,ppy+r*iy*0.5,r*0.55,
+      0,`rgba(255,255,255,${str})`,1,'transparent');
+    cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();
+  }
+  function atm(col,a=0.5){
+    cx.strokeStyle=col;cx.lineWidth=r*0.06;cx.globalAlpha=a;
+    cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.stroke();cx.globalAlpha=1;
+  }
+
+  cx.save();
+
+  if(sub==='earth'){
+    // Base sphere
+    const bg=RG(ppx-r*0.3,ppy-r*0.3,r*0.05,ppx,ppy,r,0,'#4499ff',0.4,'#1155cc',1,'#002288');
+    disc(bg);
+    clip();
+    // 3 continent blobs
+    const ang=rot*0.08,ca=Math.cos(ang),sa=Math.sin(ang);
+    [[-0.32,-0.28,'#3a9a3a'],[0.2,0.1,'#4a9a3a'],[0.35,-0.2,'#5aaa33']].forEach(([dx,dy,col])=>{
+      const ox=ppx+(dx*ca-dy*sa)*r,oy=ppy+(dx*sa+dy*ca)*r;
+      cx.fillStyle=col;cx.beginPath();cx.arc(ox,oy,r*0.32,0,Math.PI*2);cx.fill();
+    });
+    // North pole
+    cx.fillStyle=RG(ppx,ppy-r*0.8,0,ppx,ppy-r*0.65,r*0.42,0,'rgba(240,250,255,0.9)',1,'transparent');
+    cx.fillRect(ppx-r,ppy-r,r*2,r*0.55);
+    // Cloud band
+    cx.fillStyle='rgba(255,255,255,0.18)';
+    cx.beginPath();cx.ellipse(ppx,ppy-r*0.2,r*0.7,r*0.1,rot*0.05,0,Math.PI*2);cx.fill();
+    cx.restore();
+    term(0.88);spec(-0.36,-0.4,0.48);atm('rgba(100,160,255,0.5)');
+
+  }else if(sub==='mars'){
+    disc(RG(ppx-r*0.25,ppy-r*0.25,r*0.05,ppx,ppy,r,0,'#e87744',0.35,'#cc5522',0.7,'#993311',1,'#661100'));
+    clip();
+    // Polar cap
+    cx.fillStyle=RG(ppx,ppy-r*0.82,0,ppx,ppy-r*0.68,r*0.38,0,'rgba(240,248,255,0.85)',1,'transparent');
+    cx.fillRect(ppx-r,ppy-r,r*2,r*0.5);
+    // Canyon
+    cx.save();cx.translate(ppx,ppy);cx.rotate(rot*0.08);
+    cx.strokeStyle='rgba(80,20,5,0.5)';cx.lineWidth=r*0.055;cx.lineCap='round';
+    cx.beginPath();cx.moveTo(-r*0.5,r*0.05);cx.bezierCurveTo(-r*0.1,r*0.02,r*0.15,r*0.08,r*0.45,r*0.02);cx.stroke();
+    cx.restore();
+    // Volcano
+    cx.fillStyle=RG(ppx-r*0.28,ppy-r*0.1,0,ppx-r*0.28,ppy-r*0.1,r*0.16,0,'rgba(180,75,35,0.65)',1,'transparent');
+    cx.beginPath();cx.arc(ppx-r*0.28,ppy-r*0.1,r*0.16,0,Math.PI*2);cx.fill();
+    // Dust storm
+    const dsx=ppx+Math.cos(t*0.2+rot)*r*0.2,dsy=ppy+r*0.1;
+    cx.fillStyle=RG(dsx,dsy,0,dsx,dsy,r*0.25,0,'rgba(220,145,75,0.3)',1,'transparent');
+    cx.beginPath();cx.ellipse(dsx,dsy,r*0.25,r*0.14,0.5,0,Math.PI*2);cx.fill();
+    // 3 craters
+    [[0.32,0.22,0.09],[0.18,-0.38,0.08],[-0.28,0.28,0.09]].forEach(([dx,dy,cr])=>{
+      const ox=ppx+dx*r,oy=ppy+dy*r;
+      cx.strokeStyle='rgba(200,110,70,0.45)';cx.lineWidth=r*cr*0.18;
+      cx.beginPath();cx.arc(ox,oy,r*cr,0,Math.PI*2);cx.stroke();
+      cx.fillStyle=RG(ox,oy,0,ox,oy,r*cr,0,'rgba(70,18,6,0.5)',1,'transparent');
+      cx.beginPath();cx.arc(ox,oy,r*cr,0,Math.PI*2);cx.fill();
+    });
+    cx.restore();
+    term(0.86);spec(-0.35,-0.38,0.38,'255,200,180');atm('rgba(255,140,80,0.4)');
+
+  }else if(sub==='jupiter'){
+    disc(RG(ppx-r*0.2,ppy-r*0.2,r*0.05,ppx,ppy,r,0,'#f0d090',0.4,'#c8903c',1,'#5a3515'));
+    clip();
+    // 5 bands
+    [[-0.75,0.12,'#b87040'],[-0.48,0.14,'#d8b868'],[-0.18,0.1,'#b87840'],
+     [0.1,0.14,'#d0a860'],[0.38,0.1,'#c08040']].forEach(([y,h,c])=>{
+      cx.fillStyle=c;cx.fillRect(ppx-r,ppy+y*r,r*2,h*r);
+    });
+    // GRS
+    const gx=ppx+Math.cos(rot*0.15)*r*0.22,gy=ppy+r*0.12;
+    cx.fillStyle=RG(gx,gy,r*0.04,gx,gy,r*0.18,0,'rgba(190,65,28,0.8)',0.6,'rgba(155,45,18,0.5)',1,'transparent');
+    cx.beginPath();cx.ellipse(gx,gy,r*0.18,r*0.11,0,0,Math.PI*2);cx.fill();
+    cx.restore();
+    // Limb dark
+    cx.fillStyle=RG(ppx,ppx,r*0.4,ppx,ppy,r,0,'transparent',0.65,'rgba(20,10,0,0.12)',1,'rgba(10,5,0,0.55)');
+    cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();
+    spec(-0.3,-0.34,0.38,'255,240,200');
+
+  }else if(sub==='saturn'){
+    // Back rings
+    cx.save();cx.translate(ppx,ppy);
+    cx.fillStyle=RG(0,0,r*1.18,0,0,r*2.08,0,'rgba(210,185,140,0.68)',0.45,'rgba(195,168,122,0.42)',0.7,'rgba(175,150,108,0.28)',1,'transparent');
+    cx.beginPath();cx.ellipse(0,0,r*2.08,r*2.08*0.27,0,Math.PI,0);cx.fill();
+    cx.restore();
+    // Planet
+    disc(RG(ppx-r*0.22,ppy-r*0.22,r*0.04,ppx,ppy,r,0,'#f2e095',0.28,'#dfc070',0.6,'#b88838',1,'#5a3c0a'));
+    clip();
+    [[-0.6,0.1,'rgba(220,190,115,0.22)'],[-0.35,0.12,'rgba(175,140,70,0.18)'],
+     [0.0,0.16,'rgba(215,185,110,0.2)'],[0.28,0.1,'rgba(175,140,70,0.16)']].forEach(([y,h,c])=>{
+      cx.fillStyle=c;cx.fillRect(ppx-r,ppy+y*r,r*2,h*r);
+    });
+    cx.restore();
+    term(0.82);spec(-0.33,-0.37,0.4,'255,245,205');
+    // Front rings
+    cx.save();cx.translate(ppx,ppy);
+    cx.fillStyle=RG(0,0,r*1.18,0,0,r*2.08,0,'rgba(210,185,140,0.65)',0.45,'rgba(195,168,122,0.4)',0.7,'rgba(175,150,108,0.25)',1,'transparent');
+    cx.beginPath();cx.ellipse(0,0,r*2.08,r*2.08*0.27,0,0,Math.PI);cx.fill();
+    // Cassini gap
+    cx.strokeStyle='rgba(20,14,5,0.5)';cx.lineWidth=r*0.03;
+    cx.beginPath();cx.ellipse(0,0,r*1.495,r*1.495*0.27,0,0,Math.PI);cx.stroke();
+    cx.restore();
+    // Belt asteroids
+    for(const a of p.beltAsts){
+      const ax=ppx+Math.cos(a.ang)*p.beltR,ay=ppy+Math.sin(a.ang)*p.beltR*0.27;
+      cx.fillStyle='#aa9977';cx.beginPath();cx.arc(ax,ay,a.sz*0.4,0,Math.PI*2);cx.fill();
+    }
+
+  }else if(sub==='uranus'){
+    disc(RG(ppx-r*0.28,ppy-r*0.28,r*0.04,ppx,ppy,r,0,'#aaeedd',0.32,'#55ccbb',0.68,'#229988',1,'#0d5548'));
+    clip();
+    cx.fillStyle='rgba(140,230,220,0.18)';cx.fillRect(ppx-r,ppy-r*0.5,r*2,r*0.2);
+    cx.fillStyle='rgba(110,220,210,0.14)';cx.fillRect(ppx-r,ppy+r*0.1,r*2,r*0.18);
+    cx.restore();
+    term(0.8);spec(-0.37,-0.4,0.48,'200,255,250');
+    cx.save();cx.translate(ppx,ppy);
+    [r*1.38,r*1.55,r*1.72].forEach(rr2=>{
+      cx.strokeStyle='rgba(160,220,215,0.12)';cx.lineWidth=1.2;
+      cx.beginPath();cx.ellipse(0,0,rr2,rr2*0.11,0,0,Math.PI*2);cx.stroke();
+    });
+    cx.restore();
+    atm('rgba(80,220,210,0.45)');
+
+  }else if(sub==='neptune'){
+    disc(RG(ppx-r*0.26,ppy-r*0.26,r*0.04,ppx,ppy,r,0,'#5588ff',0.32,'#2244dd',0.68,'#1133aa',1,'#051068'));
+    clip();
+    [{y:-0.4,h:0.11,c:'rgba(70,110,255,0.28)'},{y:0.1,h:0.13,c:'rgba(60,100,240,0.24)'}].forEach(b=>{
+      cx.fillStyle=b.c;cx.fillRect(ppx-r,ppy+b.y*r,r*2,b.h*r);
+    });
+    // GDS
+    const gx=ppx+Math.cos(rot*0.12)*r*0.2,gy=ppy-r*0.18;
+    cx.fillStyle=RG(gx,gy,0,gx,gy,r*0.16,0,'rgba(8,18,80,0.85)',1,'transparent');
+    cx.beginPath();cx.ellipse(gx,gy,r*0.16,r*0.09,0.2,0,Math.PI*2);cx.fill();
+    // White storm
+    const sx=ppx+Math.cos(rot*0.3+2)*r*0.3,sy=ppy+r*0.08;
+    cx.fillStyle=RG(sx,sy,0,sx,sy,r*0.08,0,'rgba(160,185,255,0.7)',1,'transparent');
+    cx.beginPath();cx.arc(sx,sy,r*0.08,0,Math.PI*2);cx.fill();
+    cx.restore();
+    term(0.86);spec(-0.37,-0.4,0.48,'160,190,255');
+    cx.save();cx.translate(ppx,ppy);
+    [r*1.4,r*1.55].forEach(rr2=>{
+      cx.strokeStyle='rgba(80,100,200,0.15)';cx.lineWidth=1.2;
+      cx.beginPath();cx.ellipse(0,0,rr2,rr2*0.18,0,0,Math.PI*2);cx.stroke();
+    });
+    cx.restore();
+    atm('rgba(70,110,255,0.45)');
+
+  }else if(sub==='mercury'){
+    disc(RG(ppx-r*0.3,ppy-r*0.3,r*0.03,ppx,ppy,r,0,'#c8c0b4',0.38,'#a8a098',0.72,'#686050',1,'#282010'));
+    clip();
+    // Caloris basin
+    cx.strokeStyle='rgba(160,140,120,0.45)';cx.lineWidth=r*0.045;
+    cx.beginPath();cx.arc(ppx+r*0.15,ppy-r*0.1,r*0.32,0,Math.PI*2);cx.stroke();
+    // 4 craters
+    [[0.32,0.24,0.1],[0.18,-0.38,0.09],[-0.28,0.28,0.09],[0.38,-0.14,0.08]].forEach(([dx,dy,cr])=>{
+      const ox=ppx+dx*r,oy=ppy+dy*r;
+      cx.strokeStyle='rgba(195,178,158,0.5)';cx.lineWidth=r*cr*0.18;
+      cx.beginPath();cx.arc(ox,oy,r*cr,0,Math.PI*2);cx.stroke();
+      cx.fillStyle=RG(ox,oy,0,ox,oy,r*cr,0,'rgba(25,18,12,0.6)',1,'transparent');
+      cx.beginPath();cx.arc(ox,oy,r*cr,0,Math.PI*2);cx.fill();
+    });
+    cx.restore();
+    // Hard terminator
+    cx.fillStyle=LG(ppx-r,ppy,ppx+r,ppy,0,'transparent',0.47,'transparent',0.54,'rgba(0,0,0,0.42)',0.72,'rgba(0,0,0,0.86)',1,'rgba(0,0,0,0.96)');
+    cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();
+    spec(-0.34,-0.37,0.42,'228,218,205');
+
+  }else if(sub==='venus'){
+    cx.fillStyle=RG(ppx,ppy,r*0.88,ppx,ppy,r*1.55,0,'rgba(255,220,80,0.28)',0.5,'rgba(240,185,45,0.12)',1,'transparent');
+    cx.beginPath();cx.arc(ppx,ppy,r*1.55,0,Math.PI*2);cx.fill();
+    disc(RG(ppx-r*0.2,ppy-r*0.2,r*0.04,ppx,ppy,r,0,'#f8e8a0',0.28,'#eecf70',0.58,'#cca030',1,'#604808'));
+    clip();
+    [-0.65,-0.4,-0.1,0.2,0.5,0.75].forEach((y,i)=>{
+      cx.save();cx.translate(ppx,ppy);cx.rotate(rot*0.04*(i%2?1:-1));
+      cx.fillStyle=`rgba(255,240,160,${0.14+i*0.02})`;cx.fillRect(-r,y*r,r*2,r*0.14);
+      cx.restore();
+    });
+    cx.restore();
+    cx.fillStyle=RG(ppx+r*0.5,ppy,0,ppx+r*0.18,ppy,r*1.1,0,'transparent',0.38,'rgba(6,4,0,0.08)',0.72,'rgba(6,4,0,0.55)',1,'rgba(6,4,0,0.82)');
+    cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();
+    spec(-0.37,-0.4,0.52,'255,248,220');atm('rgba(255,200,80,0.45)',0.5);
+
+  }else if(sub==='moon'){
+    disc(RG(ppx-r*0.3,ppy-r*0.3,r*0.03,ppx,ppy,r,0,'#d8d0c8',0.38,'#a8a098',0.72,'#706860',1,'#302820'));
+    clip();
+    // 3 maria
+    [[0.15,-0.25,0.38,0.28],[0.32,0.1,0.24,0.18],[-0.1,0.18,0.2,0.14]].forEach(([dx,dy,rx,ry])=>{
+      cx.fillStyle=RG(ppx+dx*r,ppy+dy*r,0,ppx+dx*r,ppy+dy*r,r*rx,0,'rgba(55,50,45,0.68)',1,'transparent');
+      cx.beginPath();cx.ellipse(ppx+dx*r,ppy+dy*r,r*rx,r*ry,rot*0.04,0,Math.PI*2);cx.fill();
+    });
+    // Craters
+    [[0.3,0.25,0.11],[0.18,-0.4,0.09],[-0.3,0.28,0.1],[0.38,-0.14,0.08]].forEach(([dx,dy,cr])=>{
+      const ox=ppx+dx*r,oy=ppy+dy*r;
+      cx.strokeStyle='rgba(200,192,182,0.5)';cx.lineWidth=r*cr*0.17;
+      cx.beginPath();cx.arc(ox,oy,r*cr,0,Math.PI*2);cx.stroke();
+      cx.fillStyle=RG(ox,oy,0,ox,oy,r*cr,0,'rgba(20,16,13,0.65)',1,'transparent');
+      cx.beginPath();cx.arc(ox,oy,r*cr,0,Math.PI*2);cx.fill();
+    });
+    cx.restore();
+    cx.fillStyle=LG(ppx-r,ppy,ppx+r,ppy,0,'transparent',0.47,'transparent',0.55,'rgba(0,0,0,0.28)',0.7,'rgba(0,0,0,0.62)',1,'rgba(0,0,0,0.8)');
+    cx.beginPath();cx.arc(ppx,ppy,r,0,Math.PI*2);cx.fill();
+    spec(-0.32,-0.35,0.36,'240,232,222');
+
+  }else if(p.type==='red'){
+    const flick=0.55+0.45*Math.sin(t*3.2+p.pulse);
+    // Corona
+    cx.fillStyle=RG(ppx,ppy,r*0.88,ppx,ppy,r*2.5,0,`rgba(255,200,50,${0.32*flick})`,0.4,`rgba(255,120,0,${0.14*flick})`,1,'transparent');
+    cx.beginPath();cx.arc(ppx,ppy,r*2.5,0,Math.PI*2);cx.fill();
+    // 3 flares
+    for(let f=0;f<3;f++){
+      const fa=rot*0.4+f*Math.PI*2/3+Math.sin(t*0.9+f*1.8)*0.4;
+      const fl=Math.max(r*0.05,r*(0.45+0.45*Math.sin(t*2+f*1.8+p.pulse)));
+      const fx=ppx+Math.cos(fa)*(r+fl*0.15),fy=ppy+Math.sin(fa)*(r+fl*0.15);
+      cx.fillStyle=RG(fx,fy,0,fx,fy,fl,0,`rgba(255,220,60,${0.55*flick})`,0.4,`rgba(255,100,0,${0.25*flick})`,1,'transparent');
+      cx.beginPath();cx.arc(fx,fy,fl,0,Math.PI*2);cx.fill();
+    }
+    // Sphere
+    disc(RG(ppx-r*0.28,ppy-r*0.28,r*0.04,ppx+r*0.1,ppy+r*0.1,r,0,'#fffaaa',0.15,'#ffdd00',0.38,'#ffaa00',0.65,'#ee5500',0.88,'#bb2200',1,'#660800'));
+    clip();
+    // 2 sunspots
+    [{dx:0.3,dy:0.12,sr:0.1},{dx:-0.25,dy:-0.18,sr:0.08}].forEach(s=>{
+      const sx=ppx+Math.cos(rot*0.3)*s.dx*r-Math.sin(rot*0.3)*s.dy*r;
+      const sy=ppy+Math.sin(rot*0.3)*s.dx*r+Math.cos(rot*0.3)*s.dy*r;
+      cx.fillStyle=RG(sx,sy,0,sx,sy,r*s.sr*1.5,0,'rgba(30,4,0,0.8)',0.6,'rgba(60,10,0,0.5)',1,'transparent');
+      cx.beginPath();cx.arc(sx,sy,r*s.sr*1.5,0,Math.PI*2);cx.fill();
+    });
+    cx.restore();
+    cx.fillStyle=RG(ppx,ppy,r*0.88,ppx,ppy,r*1.1,0,`rgba(255,180,0,${0.45+0.25*flick})`,1,'transparent');
+    cx.beginPath();cx.arc(ppx,ppy,r*1.1,0,Math.PI*2);cx.fill();
+    spec(-0.28,-0.33,0.55,'255,255,200');
+
+  }else if(p.type==='black'){
+    // Back disk
+    cx.save();cx.translate(ppx,ppy);
+    const dk=RG(0,0,r*1.08,0,0,r*2.2,0,'rgba(255,150,0,0.75)',0.35,'rgba(255,70,0,0.5)',0.7,'rgba(150,15,0,0.28)',1,'transparent');
+    cx.fillStyle=dk;cx.beginPath();cx.ellipse(0,0,r*2.2,r*2.2*0.24,rot*0.2,Math.PI,0);cx.fill();
+    cx.restore();
+    // Lens rings
+    for(let i=0;i<2;i++){
+      cx.strokeStyle=`rgba(${255-i*40},${180-i*60},${80-i*20},${(0.32-i*0.08)*(0.7+0.3*pulse)})`;
+      cx.lineWidth=r*0.035*(1-i*0.3);
+      cx.beginPath();cx.arc(ppx,ppy,r*(1.02+i*0.04),0,Math.PI*2);cx.stroke();
+    }
+    // Event horizon
+    disc(RG(ppx-r*0.1,ppy-r*0.1,0,ppx,ppy,r,0,'#0e0018',0.6,'#040008',1,'#000000'));
+    // Front disk
+    cx.save();cx.translate(ppx,ppy);
+    cx.fillStyle=dk;cx.beginPath();cx.ellipse(0,0,r*2.2,r*2.2*0.24,rot*0.2,0,Math.PI);cx.fill();
+    cx.restore();
+    // Photon sphere
+    cx.strokeStyle=`rgba(180,60,255,${0.6+0.25*pulse})`;cx.lineWidth=r*0.04;
+    cx.beginPath();cx.arc(ppx,ppy,r*1.02,0,Math.PI*2);cx.stroke();
+    // Gravity range
+    if(p.gravR>0){cx.strokeStyle='rgba(100,0,180,0.07)';cx.lineWidth=1;cx.setLineDash([5,10]);
+      cx.beginPath();cx.arc(ppx,ppy,p.gravR,0,Math.PI*2);cx.stroke();cx.setLineDash([]);}
+  }
+
+  cx.restore();
+  // Moving asteroids
+  for(const mv of p.movers){
+    const mx=sx(mv.x),my=sy(mv.y),sz2=mv.sz;
+    cx.save();cx.translate(mx,my);cx.rotate(mv.x*0.1);
+    cx.fillStyle=RG(-sz2*0.3,-sz2*0.3,0,0,0,sz2*1.2,0,'#ccbb99',0.5,'#776655',1,'#221100');
+    cx.beginPath();cx.moveTo(sz2,sz2*0.2);cx.lineTo(sz2*0.3,sz2*0.9);cx.lineTo(-sz2*0.7,sz2*0.6);cx.lineTo(-sz2*0.9,-sz2*0.1);cx.lineTo(-sz2*0.4,-sz2*0.8);cx.lineTo(sz2*0.6,-sz2*0.5);cx.closePath();cx.fill();
+    cx.restore();
+  }
+}
+
+function drawShip(ctx,x,y,ang,shipId,col,S=16){
+  const T=Date.now()*0.001;
+  const P=Math.sin(T*6)*0.5+0.5;   // fast pulse (engine)
+  const P2=Math.sin(T*3.5+1)*0.5+0.5; // slow pulse (glow)
+  const P3=Math.sin(T*9+0.5)*0.5+0.5; // flicker
+
+  // helpers
+  function G(x0,y0,x1,y1,...stops){
+    const g=ctx.createLinearGradient(x0,y0,x1,y1);
+    for(let i=0;i<stops.length;i+=2)g.addColorStop(stops[i],stops[i+1]);
+    return g;
+  }
+  function RG(x0,y0,r0,x1,y1,r1,...stops){
+    const r0s=Math.max(0,r0),r1s=Math.max(0.001,r1);
+    const g=ctx.createRadialGradient(x0,y0,r0s,x1,y1,r1s);
+    for(let i=0;i<stops.length;i+=2)g.addColorStop(stops[i],stops[i+1]);
+    return g;
+  }
+  function poly(...pts){ctx.beginPath();ctx.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)ctx.lineTo(pts[i],pts[i+1]);ctx.closePath();}
+  // Multi-layer flame
+  function flame(x0,y0,dx,dy,w,len,c1,c2,pulse){
+    const fl=len*(0.6+pulse*0.4);
+    const perp=Math.atan2(dy,dx)+Math.PI/2;
+    const px=Math.cos(perp),py=Math.sin(perp);
+    // outer glow
+    ctx.fillStyle=G(x0,y0,x0+dx*fl,y0+dy*fl,0,c1+'44',0.6,c2+'22',1,'transparent');
+    poly(x0+px*w*1.4,y0+py*w*1.4,x0+dx*fl*1.1,y0+dy*fl*1.1,x0-px*w*1.4,y0-py*w*1.4);ctx.fill();
+    // core flame
+    ctx.fillStyle=G(x0,y0,x0+dx*fl*0.9,y0+dy*fl*0.9,0,'#ffffff',0.15,c1,0.55,c2+'aa',1,'transparent');
+    poly(x0+px*w,y0+py*w,x0+dx*fl*0.9,y0+dy*fl*0.9,x0-px*w,y0-py*w);ctx.fill();
+    // hot core
+    ctx.fillStyle=G(x0,y0,x0+dx*fl*0.3,y0+dy*fl*0.3,0,'#ffffff',1,'#ffffff00');
+    poly(x0+px*w*0.3,y0+py*w*0.3,x0+dx*fl*0.3,y0+dy*fl*0.3,x0-px*w*0.3,y0-py*w*0.3);ctx.fill();
+  }
+  // Engine nozzle bell
+  function nozzle(cx2,cy2,rOuter,rInner,len,flameCol,pulse){
+    // Bell shape
+    const bg=G(cx2-rOuter,cy2,cx2+rOuter,cy2,0,'#3a4455',0.5,'#5a6677',1,'#3a4455');
+    ctx.fillStyle=bg;
+    ctx.beginPath();ctx.arc(cx2,cy2,rOuter,0,Math.PI*2);ctx.fill();
+    // Cooling rings
+    for(let r2=0;r2<3;r2++){
+      const ry=rOuter*(0.35+r2*0.22);
+      ctx.strokeStyle='#2a3344';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(cx2,cy2,ry,0,Math.PI*2);ctx.stroke();
+    }
+    // Inner throat glow
+    ctx.fillStyle=RG(cx2,cy2,0,cx2,cy2,rInner,0,flameCol+'ff',0.4,flameCol+'88',1,'#00000000');
+    ctx.beginPath();ctx.arc(cx2,cy2,rInner,0,Math.PI*2);ctx.fill();
+    // Hot core
+    const core=Math.max(0.001,rInner*0.4*(0.6+pulse*0.4));
+    ctx.fillStyle=RG(cx2,cy2,0,cx2,cy2,core,0,'#ffffff',0.5,flameCol,1,'transparent');
+    ctx.beginPath();ctx.arc(cx2,cy2,core,0,Math.PI*2);ctx.fill();
+    // Exhaust streak inside bell
+    ctx.fillStyle=G(cx2,cy2,cx2+len,cy2,0,flameCol+'cc',0.3,'#ffffff55',0.7,flameCol+'44',1,'transparent');
+    ctx.fillRect(cx2,cy2-rInner*0.5,len,rInner);
+  }
+  // Panel rivets
+  function rivets(pts,r2=1.2,col='#778899'){
+    ctx.fillStyle=col;
+    for(let i=0;i<pts.length;i+=2){ctx.beginPath();ctx.arc(pts[i],pts[i+1],r2,0,Math.PI*2);ctx.fill();}
+  }
+  // Cockpit glass multi-layer
+  function cockpit(cx2,cy2,rw,rh,ang2=0,tint='#2266aa'){
+    // Frame
+    ctx.fillStyle=G(-rw,-rh,rw,rh,0,'#445566',1,'#223344');
+    ctx.beginPath();ctx.ellipse(cx2,cy2,rw+2,rh+2,ang2,0,Math.PI*2);ctx.fill();
+    // Dark interior
+    ctx.fillStyle=tint+'dd';
+    ctx.beginPath();ctx.ellipse(cx2,cy2,rw,rh,ang2,0,Math.PI*2);ctx.fill();
+    // HUD glow
+    ctx.fillStyle=`rgba(0,200,255,${0.08+0.06*P2})`;
+    ctx.beginPath();ctx.ellipse(cx2,cy2,rw*0.7,rh*0.7,ang2,0,Math.PI*2);ctx.fill();
+    // Glass highlight
+    ctx.fillStyle=RG(cx2-rw*0.3,cy2-rh*0.5,0,cx2-rw*0.2,cy2-rh*0.2,rw*0.55,
+      0,'rgba(255,255,255,0.55)',0.4,'rgba(200,240,255,0.18)',1,'transparent');
+    ctx.beginPath();ctx.ellipse(cx2,cy2,rw,rh,ang2,0,Math.PI*2);ctx.fill();
+    // Outer reflection line
+    ctx.strokeStyle='rgba(200,240,255,0.4)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.ellipse(cx2,cy2,rw,rh,ang2,0,Math.PI*2);ctx.stroke();
+  }
+  // Hull panel line
+  function panel(x0,y0,x1,y1,col='rgba(80,100,120,0.45)'){
+    ctx.strokeStyle=col;ctx.lineWidth=0.7;
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+  }
+  // Pipe along a line
+  function pipe(x0,y0,x1,y1,r2=2,col='#445566'){
+    const ang2=Math.atan2(y1-y0,x1-x0);const len=Math.hypot(x1-x0,y1-y0);
+    ctx.save();ctx.translate(x0,y0);ctx.rotate(ang2);
+    const pg=G(0,-r2,0,r2,0,col+'ff',0.4,'#aabbcc88',0.5,'#ffffff44',1,col+'ff');
+    ctx.fillStyle=pg;ctx.fillRect(0,-r2,len,r2*2);
+    ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=0.5;
+    ctx.strokeRect(0,-r2,len,r2*2);
+    ctx.restore();
+  }
+  // Heat tile pattern (shuttle-style)
+  function heatTiles(x,y,w,h,rows,cols,baseCol){
+    const tw=w/cols,th=h/rows;
+    for(let r2=0;r2<rows;r2++)for(let c=0;c<cols;c++){
+      const v=0.75+Math.sin(r2*1.7+c*2.3)*0.25;
+      ctx.fillStyle=baseCol;ctx.globalAlpha=v*0.5;
+      ctx.fillRect(x+c*tw+0.5,y+r2*th+0.5,tw-1,th-1);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  ctx.save();
+  ctx.translate(Math.round(x),Math.round(y));
+  ctx.rotate(ang);
+  ctx.imageSmoothingEnabled=true;
+
+  const sc=S/7.5; // universal scale factor
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // KEŞİF SONDASI (arrow)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if(shipId==='arrow'){
+    const s=sc;
+
+    // Engine flame (multi-layer)
+    flame(-s*6,0,-1,0,s*2.2,s*22,'#44ccff','#0044ff',P);
+    flame(-s*6,0,-1,0,s*1.0,s*16,'#88eeff','#0088ff',P3);
+
+    // Main fuselage — tapered cylinder
+    ctx.fillStyle=G(0,-s*4,0,s*4,
+      0,'#ccd8e8',0.3,'#e8f0f8',0.7,'#9aacbc',1,'#667788');
+    poly(s*22,0, s*12,-s*3.5, -s*6,-s*3.5, -s*6,s*3.5, s*12,s*3.5);ctx.fill();
+
+    // Upper hull ridge panel
+    ctx.fillStyle=G(0,-s*5,0,0, 0,'#ffffff',0.3,'#dde8f5',1,'#9aacbc');
+    poly(s*18,0, s*10,-s*2, 0,-s*3.5, -s*4,-s*3.5, -s*4,-s*0.5, s*6,-s*0.5);ctx.fill();
+
+    // Lower belly darker
+    ctx.fillStyle=G(0,s*1,0,s*4, 0,'#7788aa',1,'#445566');
+    poly(s*12,s*0.5, -s*4,s*0.5, -s*6,s*3.5, s*12,s*3.5);ctx.fill();
+
+    // Nose cone with heat gradient
+    ctx.fillStyle=G(s*12,0,s*23,0, 0,'#eef8ff',0.5,'#c8ddf0',1,'#8899aa');
+    poly(s*12,-s*3.5, s*23,0, s*12,s*3.5);ctx.fill();
+    // Nose tip hot spot
+    ctx.fillStyle=RG(s*21,0,0,s*21,0,s*2.5, 0,'rgba(255,240,200,0.7)',0.6,'transparent',1,'transparent');
+    ctx.beginPath();ctx.arc(s*21,0,s*2.5,0,Math.PI*2);ctx.fill();
+
+    // Wing strakes
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(0,-s*2*sv,0,s*7*sv,
+        0,'#8899bb',0.4,'#6677aa',1,'#334455');
+      poly(s*8,sv*s*3.5, s*2,sv*s*7, -s*5,sv*s*7, -s*5,sv*s*3.5);ctx.fill();
+      // Wing leading edge bevel
+      ctx.fillStyle=G(s*8,sv*s*3.5,-s*5,sv*s*7, 0,'#aabbdd',1,'#556677');
+      poly(s*8,sv*s*3.5, s*5,sv*s*4, -s*4,sv*s*6.5, -s*5,sv*s*7);ctx.fill();
+      // Wing tip nav light
+      ctx.fillStyle=sv>0?'#ff3344':'#3344ff';
+      ctx.beginPath();ctx.arc(-s*4,sv*s*7,s*0.9,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.7)';
+      ctx.beginPath();ctx.arc(-s*4-s*0.3,sv*s*7-sv*s*0.3,s*0.35,0,Math.PI*2);ctx.fill();
+    }
+
+    // Panel lines — hull sections
+    panel(-s*4,-s*3.5, s*0,-s*3.5); panel(s*4,-s*3.5,s*10,-s*3.5);
+    panel(-s*4,s*3.5, s*0,s*3.5); panel(s*4,s*3.5,s*10,s*3.5);
+    panel(s*4,-s*3.5, s*4,s*3.5); panel(s*8,-s*3.5, s*8,s*3.5);
+    panel(-s*4,-s*3.5, -s*4,s*3.5);
+
+    // Pipe along lower spine
+    pipe(-s*4,s*1, s*10,s*1, s*0.8,'#556677');
+
+    // Rivets along hull join
+    rivets([-s*4,-s*3.5+s*0.5, s*0,-s*3.5+s*0.5, s*4,-s*3.5+s*0.5,
+             s*8,-s*3.5+s*0.5, s*12,-s*3.5+s*0.5,
+            -s*4,s*3.5-s*0.5, s*4,s*3.5-s*0.5, s*8,s*3.5-s*0.5], s*0.7,'#9aaabb');
+
+    // Engine nacelle
+    ctx.fillStyle=G(-s*8,-s*3,-s*8,s*3, 0,'#445566',0.5,'#667788',1,'#334455');
+    ctx.beginPath();ctx.ellipse(-s*5,0,s*3.2,s*2.8,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#5a6b7c';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(-s*5,0,s*3.2,s*2.8,0,0,Math.PI*2);ctx.stroke();
+    nozzle(-s*6,0,s*2.4,s*1.4,s*4,'#44ccff',P);
+
+    // Cockpit
+    cockpit(s*7,-s*0.8,s*4.5,s*2.4,0,'#113366');
+    // Cockpit frame bolts
+    rivets([s*3,-s*3, s*11,-s*3, s*3,s*1.5, s*11,s*1.5], s*0.6,'#88aabb');
+
+    // Sensor array on nose
+    ctx.fillStyle='#334455';ctx.fillRect(s*14,-s*0.3,s*4,s*0.6);
+    ctx.fillStyle='#00ccff';ctx.beginPath();ctx.arc(s*18,0,s*0.5,0,Math.PI*2);ctx.fill();
+
+    // Antenna
+    ctx.strokeStyle='#8899aa';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(s*6,-s*3.5);ctx.lineTo(s*7,-s*6);ctx.stroke();
+    ctx.fillStyle='#ccddee';ctx.beginPath();ctx.arc(s*7,-s*6,s*0.7,0,Math.PI*2);ctx.fill();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UZAY MEKİĞİ (shuttle)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='shuttle'){
+    const s=sc;
+
+    // Twin engine flames
+    for(const sv of[-1,1]){
+      flame(-s*14,sv*s*5,-1,0,s*1.8,s*26,'#88ffaa','#00cc44',P);
+      flame(-s*14,sv*s*5,-1,0,s*0.8,s*18,'#ccffdd','#44ff88',P3);
+    }
+
+    // Main body — complex cross-section
+    ctx.fillStyle=G(0,-s*7,0,s*7, 0,'#e8eef5',0.35,'#f2f6fc',0.65,'#c8d4e0',1,'#8899aa');
+    poly(s*18,0, s*10,-s*5, -s*14,-s*6, -s*14,s*6, s*10,s*5);ctx.fill();
+
+    // Upper fuselage spine
+    ctx.fillStyle=G(0,-s*8,0,-s*3, 0,'#ffffff',0.5,'#dde8f5',1,'#a0b0c0');
+    poly(s*14,0, s*8,-s*5, s*0,-s*6, -s*14,-s*6, -s*14,-s*3, s*0,-s*3.5, s*8,-s*2.5);ctx.fill();
+
+    // Cargo bay — distinct dark section
+    ctx.fillStyle=G(0,-s*2,0,s*2, 0,'#445566',0.5,'#556677',1,'#3a4a55');
+    ctx.fillRect(-s*8,-s*3,s*14,s*6);
+    // Cargo bay doors
+    ctx.strokeStyle='rgba(100,140,160,0.5)';ctx.lineWidth=1;
+    for(let i=0;i<4;i++)ctx.strokeRect(-s*8+i*s*3.5,-s*3,s*3.2,s*6);
+    // Bay hinges
+    rivets([-s*7,0,-s*3.5,0,s*0,0,s*3.5,0], s*1,'#667788');
+
+    // OMS pods (side thruster pods)
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(0,-s,0,s, 0,'#556677',0.5,'#778899',1,'#445566');
+      ctx.beginPath();ctx.ellipse(s*2,sv*s*5.5,s*5,s*1.8,0,0,Math.PI*2);ctx.fill();
+      // Pod nozzle
+      ctx.fillStyle='#334455';ctx.beginPath();ctx.ellipse(s*6,sv*s*5.5,s*1.5,s*1.5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(0,200,100,${0.3+0.2*P2})`;
+      ctx.beginPath();ctx.arc(s*6,sv*s*5.5,s*0.8,0,Math.PI*2);ctx.fill();
+    }
+
+    // Nose heat shield
+    ctx.fillStyle=G(s*10,-s*1,s*20,s*1, 0,'#cc3311',0.4,'#ee5522',1,'#aa1100');
+    poly(s*10,-s*5, s*20,0, s*10,s*5);ctx.fill();
+    // Heat tile texture on nose
+    heatTiles(s*10,-s*4.5,s*8,s*9,4,3,'#992200');
+    // Nose glow (re-entry)
+    ctx.fillStyle=RG(s*18,0,0,s*18,0,s*3.5, 0,'rgba(255,200,100,0.25)',1,'transparent');
+    ctx.beginPath();ctx.arc(s*18,0,s*3.5,0,Math.PI*2);ctx.fill();
+
+    // Delta wings — detailed
+    for(const sv of[-1,1]){
+      // Main wing surface
+      ctx.fillStyle=G(0,0,0,sv*s*12, 0,'#8899aa',0.5,'#667788',1,'#445566');
+      poly(s*6,sv*s*5, -s*4,sv*s*14, -s*14,sv*s*14, -s*14,sv*s*6);ctx.fill();
+      // Wing LE bevel
+      ctx.fillStyle=G(s*6,sv*s*5,-s*4,sv*s*14, 0,'#aabbcc',1,'#667788');
+      poly(s*6,sv*s*5, s*3,sv*s*6, -s*3,sv*s*13, -s*4,sv*s*14);ctx.fill();
+      // Elevon
+      ctx.fillStyle=G(-s*4,0,-s*8,0, 0,'#556677',1,'#667788');
+      poly(-s*4,sv*s*14, -s*14,sv*s*14, -s*14,sv*s*11, -s*4,sv*s*11);ctx.fill();
+      ctx.strokeStyle='rgba(100,130,150,0.5)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(-s*4,sv*s*11);ctx.lineTo(-s*14,sv*s*11);ctx.stroke();
+      // RCS thruster on wingtip
+      ctx.fillStyle='#445566';ctx.fillRect(-s*12,sv*s*13,s*2,sv*s*1.5);
+      ctx.fillStyle=`rgba(0,200,100,${0.15+0.1*P2})`;
+      ctx.fillRect(-s*12,sv*s*13,s*2,sv*s*0.6);
+      // Red/blue stripe
+      ctx.fillStyle=sv>0?'rgba(200,50,50,0.6)':'rgba(50,50,200,0.6)';
+      ctx.fillRect(-s*6,sv*s*13.5,s*8,sv*s*0.8);
+    }
+
+    // Panel lines on body
+    for(const lx of[-s*8,-s*4,s*0,s*4,s*8]){panel(lx,-s*5,lx,s*5);}
+    panel(-s*14,-s*3,-s*14+s*14,-s*3); panel(-s*14,s*3,-s*14+s*14,s*3);
+
+    // Pipes on engine section
+    pipe(-s*14,-s*2,-s*6,-s*2,s*0.9,'#334455');
+    pipe(-s*14,s*2,-s*6,s*2,s*0.9,'#334455');
+    // Coolant pipe (bright)
+    pipe(-s*12,-s*1,-s*2,-s*1,s*0.6,'#336688');
+    pipe(-s*12,s*1,-s*2,s*1,s*0.6,'#336688');
+
+    // Cockpit windows — 3 window cluster
+    cockpit(s*4,-s*3.5,s*5,s*2.5,0,'#112244');
+    // Side windows
+    for(const wv of[-1,1]){
+      ctx.fillStyle='#223344cc';
+      ctx.beginPath();ctx.ellipse(s*5,wv*s*2,s*1.5,s*1,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(200,230,255,0.3)';
+      ctx.beginPath();ctx.arc(s*4.5,wv*s*2-s*0.4,s*0.6,0,Math.PI*2);ctx.fill();
+    }
+
+    // Engine section
+    ctx.fillStyle=G(-s*16,-s*2,-s*16,s*2, 0,'#3a4a55',1,'#2a3a45');
+    ctx.beginPath();ctx.ellipse(-s*12,s*5,s*4,s*2.2,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(-s*12,-s*5,s*4,s*2.2,0,0,Math.PI*2);ctx.fill();
+    nozzle(-s*14,s*5,s*2.2,s*1.3,s*3,'#44ff88',P);
+    nozzle(-s*14,-s*5,s*2.2,s*1.3,s*3,'#44ff88',P);
+    // Center engine
+    ctx.fillStyle=G(-s*16,-s*1,-s*16,s*1, 0,'#3a4a55',1,'#2a3a45');
+    ctx.beginPath();ctx.ellipse(-s*12,0,s*3.2,s*1.8,0,0,Math.PI*2);ctx.fill();
+    nozzle(-s*14,0,s*1.8,s*1.0,s*3,'#44ff88',P2);
+
+    rivets([-s*10,-s*6,-s*4,-s*6,s*2,-s*6,-s*10,s*6,-s*4,s*6,s*2,s*6],s*0.7,'#99aabb');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UFO
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='ufo'){
+    const s=sc;
+
+    // Tractor beam
+    const ba=0.2+P2*0.3;
+    ctx.fillStyle=RG(0,s*4,0,0,s*4,s*20, 0,`rgba(0,255,140,${ba})`,0.4,`rgba(0,200,100,${ba*0.3})`,1,'transparent');
+    poly(-s*5,s*4, s*5,s*4, s*18,s*26, -s*18,s*26);ctx.fill();
+    // Beam center ray
+    ctx.strokeStyle=`rgba(100,255,180,${0.4+P*0.3})`;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(0,s*4);ctx.lineTo(0,s*20);ctx.stroke();
+    // Beam scan rings
+    for(let r2=1;r2<=3;r2++){
+      const ry=(T*8+r2*3.5)%15;
+      ctx.strokeStyle=`rgba(80,255,160,${(1-ry/15)*0.35})`;ctx.lineWidth=1;
+      ctx.beginPath();ctx.ellipse(0,s*4+ry*s*1.4,ry*s*1.2,ry*s*0.4,0,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Disc shadow
+    ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(s*1.5,s*5.5,s*22,s*3.5,0,0,Math.PI*2);ctx.fill();
+
+    // Bottom disc plate
+    ctx.fillStyle=G(0,-s*2,0,s*2, 0,'#3a5566',0.5,'#2a4455',1,'#1a3344');
+    ctx.beginPath();ctx.ellipse(0,s*2,s*22,s*4,0,0,Math.PI*2);ctx.fill();
+    // Bottom detail rings
+    for(let r2=1;r2<=4;r2++){
+      ctx.strokeStyle=`rgba(0,200,150,${0.12+r2*0.03})`;ctx.lineWidth=1;
+      ctx.beginPath();ctx.ellipse(0,s*2,s*(5*r2+2),s*(1.2*r2+0.5),0,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Main disc body
+    ctx.fillStyle=G(0,-s*5,0,s*4, 0,'#aabccc',0.25,'#c0d0dd',0.55,'#7a8f9e',1,'#445566');
+    ctx.beginPath();ctx.ellipse(0,0,s*22,s*5,0,0,Math.PI*2);ctx.fill();
+    // Disc rim highlight
+    ctx.strokeStyle='rgba(180,220,240,0.5)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(0,-s*1.5,s*22,s*4.5,0,0,Math.PI*2);ctx.stroke();
+    // Disc edge
+    ctx.strokeStyle='rgba(80,110,130,0.7)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(0,0,s*22,s*5,0,0,Math.PI*2);ctx.stroke();
+
+    // Panel lines on disc (radial)
+    for(let i=0;i<8;i++){
+      const pa=i*Math.PI/4;
+      panel(Math.cos(pa)*s*8,Math.sin(pa)*s*2.5, Math.cos(pa)*s*20,Math.sin(pa)*s*4.5,'rgba(60,90,110,0.4)');
+    }
+    // Concentric ring details
+    for(const r2 of[s*10,s*16]){
+      ctx.strokeStyle='rgba(70,100,120,0.35)';ctx.lineWidth=0.8;
+      ctx.beginPath();ctx.ellipse(0,0,r2,r2*0.22,0,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Mid-section band with emitters
+    ctx.fillStyle=G(0,-s*1.5,0,s*1.5, 0,'#556677',0.5,'#667788',1,'#445566');
+    ctx.beginPath();ctx.ellipse(0,0,s*18,s*2.8,0,0,Math.PI*2);ctx.fill();
+    // Emitter ports
+    for(let i=0;i<10;i++){
+      const pa=i*Math.PI/5;
+      const ex=Math.cos(pa)*s*16,ey=Math.sin(pa)*s*2.5;
+      ctx.fillStyle='#334455';ctx.beginPath();ctx.arc(ex,ey,s*1.2,0,Math.PI*2);ctx.fill();
+      const ec=['#ff4488','#44ffcc','#ff8800','#4488ff','#88ff44'][i%5];
+      ctx.fillStyle=ec;ctx.globalAlpha=0.6+0.3*Math.sin(T*3+i);
+      ctx.beginPath();ctx.arc(ex,ey,s*0.65,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+
+    // Dome
+    ctx.fillStyle=RG(-s*4,-s*8,0,-s*1,-s*3,s*11,
+      0,'rgba(200,240,255,0.92)',0.35,'rgba(80,160,200,0.75)',0.75,'rgba(20,80,150,0.6)',1,'rgba(5,20,60,0.4)');
+    ctx.beginPath();ctx.ellipse(0,-s*1,s*10,s*9,0,Math.PI,0);ctx.fill();
+    // Dome frame arcs
+    ctx.strokeStyle='rgba(120,180,220,0.3)';ctx.lineWidth=1;
+    for(const ry of[-s*4,-s*6.5,-s*8.5]){
+      const rr2=Math.sqrt(Math.max(0,s*9*s*9-(ry+s*1)*(ry+s*1)));
+      ctx.beginPath();ctx.ellipse(0,ry,rr2,rr2*0.25,0,0,Math.PI*2);ctx.stroke();
+    }
+    // Dome highlight
+    ctx.fillStyle=RG(-s*3,-s*8,0,-s*2,-s*7,s*3.5,
+      0,'rgba(255,255,255,0.55)',0.5,'rgba(200,240,255,0.2)',1,'transparent');
+    ctx.beginPath();ctx.ellipse(0,-s*1,s*10,s*9,0,Math.PI,0);ctx.fill();
+
+    // Rotating navigation lights
+    for(let i=0;i<8;i++){
+      const la=T*1.4+i*Math.PI/4;
+      const lx=Math.cos(la)*s*18,ly=Math.sin(la)*s*4;
+      const lc=['#ff4488','#44ffcc','#ffaa00','#4488ff'][i%4];
+      ctx.fillStyle=lc;ctx.globalAlpha=0.5+0.4*Math.sin(T*4+i*0.8);
+      ctx.beginPath();ctx.arc(lx,ly,s*1.4,0,Math.PI*2);ctx.fill();
+      // Light glow
+      ctx.fillStyle=lc;ctx.globalAlpha=0.15*Math.sin(T*4+i*0.8)+0.08;
+      ctx.beginPath();ctx.arc(lx,ly,s*3,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+
+    // Underside landing gear bumps
+    for(const lx of[-s*10,0,s*10]){
+      ctx.fillStyle='#334455';ctx.beginPath();ctx.ellipse(lx,s*5,s*2,s*1,0,0,Math.PI*2);ctx.fill();
+    }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SAVAŞ JETİ (fighter)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='fighter'){
+    const s=sc;
+
+    // Afterburner cones (dual)
+    for(const sv of[-1,1]){
+      flame(-s*10,sv*s*3,-1,0,s*2,s*30,'#ffaa00','#ff2200',P);
+      flame(-s*10,sv*s*3,-1,0,s*0.8,s*22,'#ffee88','#ffaa00',P3);
+    }
+
+    // Lower fuselage spine
+    ctx.fillStyle=G(0,0,0,s*5, 0,'#334466',1,'#1a2244');
+    poly(s*22,s*0.5, s*14,s*3.5, -s*10,s*4.5, -s*10,s*0.5);ctx.fill();
+
+    // Main fuselage
+    ctx.fillStyle=G(0,-s*5,0,s*3, 0,'#99aacc',0.3,'#bbc8e0',0.6,'#7788aa',1,'#445566');
+    poly(s*22,0, s*14,-s*4, -s*10,-s*5, -s*10,s*4.5, s*14,s*3.5);ctx.fill();
+
+    // Upper fuselage dark stripe
+    ctx.fillStyle=G(0,-s*5,0,-s*1, 0,'#223355',1,'#334466');
+    poly(s*20,0, s*12,-s*3, s*0,-s*4.5, -s*8,-s*4.5, -s*8,-s*1.5, s*10,-s*1);ctx.fill();
+
+    // Intake humps
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(0,-s,0,s, 0,'#334466',0.5,'#556688',1,'#445577');
+      ctx.beginPath();ctx.ellipse(s*4,sv*s*4,s*3.5,s*1.8,0,0,Math.PI*2);ctx.fill();
+      // Intake opening
+      ctx.fillStyle='#111122';ctx.beginPath();ctx.ellipse(s*4,sv*s*4,s*2.2,s*1.1,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#2a3355';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(s*4,sv*s*4,s*2.2,s*1.1,0,0,Math.PI*2);ctx.stroke();
+      // Intake interior highlight
+      ctx.fillStyle=RG(s*3,sv*s*4,0,s*4,sv*s*4,s*1.8, 0,'rgba(0,100,255,0.15)',1,'transparent');
+      ctx.beginPath();ctx.ellipse(s*4,sv*s*4,s*2,s*1,0,0,Math.PI*2);ctx.fill();
+    }
+
+    // Delta wings — detailed
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(0,0,0,sv*s*16, 0,'#3a4a66',0.5,'#4a5a77',1,'#2a3a55');
+      poly(s*6,sv*s*4, -s*8,sv*s*18, -s*10,sv*s*18, -s*10,sv*s*4);ctx.fill();
+      // Wing LE
+      ctx.fillStyle=G(s*6,sv*s*4,-s*8,sv*s*18, 0,'#667799',1,'#3a4a66');
+      poly(s*6,sv*s*4, s*3,sv*s*5, -s*7,sv*s*17, -s*8,sv*s*18);ctx.fill();
+      // Wing elevon
+      ctx.fillStyle=G(-s*4,sv*s*16,-s*8,sv*s*18, 0,'#445577',1,'#334466');
+      poly(-s*4,sv*s*18,-s*10,sv*s*18,-s*10,sv*s*15,-s*4,sv*s*15);ctx.fill();
+      ctx.strokeStyle='rgba(80,100,140,0.5)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(-s*4,sv*s*15);ctx.lineTo(-s*10,sv*s*15);ctx.stroke();
+      // Hardpoint rail
+      ctx.fillStyle=G(0,-s*0.6,0,s*0.6, 0,'#3a4a66',1,'#556677');
+      ctx.fillRect(-s*2,sv*s*9,s*5,sv*s*1.2);
+      // Missile
+      ctx.fillStyle=G(s*0,0,s*3,0, 0,'#778899',1,'#445566');
+      ctx.fillRect(-s*2,sv*s*9.5,s*5,sv*s*0.7);
+      ctx.fillStyle='#cc3300';ctx.fillRect(-s*2.5,sv*s*9.5,s*0.8,sv*s*0.7);
+      ctx.fillStyle='#334455';ctx.fillRect(s*2.5,sv*s*9.5,s*1,sv*s*0.7);
+      // Wing tip
+      ctx.fillStyle='#334455';ctx.beginPath();ctx.arc(-s*8,sv*s*17.5,s*1.2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=sv>0?'rgba(255,50,50,0.8)':'rgba(50,50,255,0.8)';
+      ctx.beginPath();ctx.arc(-s*8,sv*s*17.5,s*0.7,0,Math.PI*2);ctx.fill();
+    }
+
+    // Panel lines
+    for(const lx of[-s*4,s*0,s*4,s*8,s*12]){panel(lx,-s*4.5,lx,s*3.5);}
+    panel(-s*10,-s*1.5,s*12,-s*1.5);
+    // Stealth tiles
+    heatTiles(-s*6,-s*4.5,s*14,s*9,5,4,'#2a3a55');
+
+    // Pipes & hydraulics
+    pipe(-s*8,-s*4,-s*2,-s*4,s*0.8,'#445566');
+    pipe(-s*8,s*3.5,-s*2,s*3.5,s*0.8,'#445566');
+    pipe(-s*4,-s*4,-s*4,s*3.5,s*0.7,'#556677');
+
+    // Canopy — multi-piece
+    cockpit(s*8,-s*1.5,s*5.5,s*2.6,0,'#0a1a2e');
+    // Canopy frame bars
+    ctx.strokeStyle='rgba(100,140,180,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(s*4,-s*2.5);ctx.lineTo(s*4,s*0.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(s*8,-s*2.5);ctx.lineTo(s*8,s*0.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(s*12,-s*2.5);ctx.lineTo(s*12,s*0.5);ctx.stroke();
+    // Pilot HUD glow
+    ctx.fillStyle=`rgba(0,220,255,${0.06+0.05*P2})`;
+    ctx.beginPath();ctx.ellipse(s*8,-s*0.5,s*4,s*1.8,0,0,Math.PI*2);ctx.fill();
+
+    // Nose sensor
+    ctx.fillStyle=G(s*14,0,s*23,0, 0,'#778899',1,'#334455');
+    poly(s*14,-s*4, s*23,0, s*14,s*3.5);ctx.fill();
+    // Nose RCS
+    ctx.fillStyle='#334455';ctx.fillRect(s*20,-s*0.4,s*2,s*0.8);
+    ctx.fillStyle=`rgba(0,200,255,${0.1+0.1*P2})`;ctx.fillRect(s*21,-s*0.3,s*0.8,s*0.6);
+
+    // Engine section
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(-s*12,-s*2,-s*12,s*2, 0,'#2a3a55',1,'#1a2a44');
+      ctx.beginPath();ctx.ellipse(-s*8,sv*s*3,s*4,s*2.4,0,0,Math.PI*2);ctx.fill();
+      // Cooling grooves
+      for(let i=0;i<4;i++){
+        ctx.strokeStyle='rgba(50,70,100,0.6)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.arc(-s*8,sv*s*3,s*(1.2+i*0.6),0,Math.PI*2);ctx.stroke();
+      }
+      nozzle(-s*10,sv*s*3,s*2.2,s*1.3,s*4,'#ff6600',P);
+    }
+    rivets([-s*9,-s*5,-s*4,-s*5,s*1,-s*5,-s*9,s*4,-s*4,s*4,s*1,s*4],s*0.7,'#8899aa');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // KRİSTAL GEMİ (crystal)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='crystal'){
+    const s=sc;
+    const t2=T*1.5;
+
+    // Energy field (expanding rings)
+    for(let r2=0;r2<4;r2++){
+      const rp=(t2*0.4+r2*0.25)%1;
+      const rs=s*(1.5+rp*13);const ra=(1-rp)*0.35;
+      ctx.strokeStyle=`rgba(200,120,255,${ra})`;ctx.lineWidth=1.5*(1-rp)+0.5;
+      ctx.beginPath();ctx.arc(0,0,rs,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Crystal body — hexagonal with detailed facets
+    const verts=[];
+    for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6;verts.push([Math.cos(a)*s*14,Math.sin(a)*s*14]);}
+
+    // Back facets (darker)
+    [[0,1,2],[3,4,5],[0,2,5],[2,3,5]].forEach(([a,b,c],fi)=>{
+      const grad=G(verts[a][0],verts[a][1],0,0,
+        0,[`rgba(120,50,220,0.6)`,`rgba(80,30,180,0.5)`,`rgba(150,70,240,0.55)`,`rgba(60,20,160,0.45)`][fi],
+        1,[`rgba(80,20,180,0.3)`,`rgba(50,10,140,0.25)`,`rgba(100,40,200,0.3)`,`rgba(40,10,120,0.2)`][fi]);
+      ctx.fillStyle=grad;
+      ctx.beginPath();ctx.moveTo(verts[a][0],verts[a][1]);ctx.lineTo(verts[b][0],verts[b][1]);ctx.lineTo(verts[c][0],verts[c][1]);ctx.closePath();ctx.fill();
+    });
+
+    // Edge highlights
+    ctx.strokeStyle='rgba(220,160,255,0.8)';ctx.lineWidth=1.5;
+    ctx.beginPath();verts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.stroke();
+    // Internal edges
+    ctx.strokeStyle='rgba(180,120,255,0.3)';ctx.lineWidth=0.8;
+    for(let i=0;i<6;i++){
+      const [x,y]=verts[i];
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(x*0.7,y*0.7);ctx.stroke();
+    }
+
+    // Crystal inner structure — layered
+    ctx.fillStyle=RG(0,0,0,0,0,s*8,
+      0,'rgba(240,200,255,0.7)',0.3,'rgba(180,100,255,0.5)',0.7,'rgba(100,40,200,0.25)',1,'transparent');
+    ctx.beginPath();ctx.arc(0,0,s*8,0,Math.PI*2);ctx.fill();
+
+    // Rotating light shards (6 beams)
+    for(let i=0;i<6;i++){
+      const sa=t2*0.6+i*Math.PI/3;
+      const len=s*16;
+      ctx.strokeStyle=`rgba(255,200,255,${0.25+0.15*Math.sin(t2*1.5+i)})`;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(sa)*len,Math.sin(sa)*len);ctx.stroke();
+    }
+    // Slower outer shards
+    for(let i=0;i<3;i++){
+      const sa=t2*0.3+i*Math.PI*2/3+0.5;
+      ctx.strokeStyle=`rgba(200,150,255,0.15)`;ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(sa)*s*13,Math.sin(sa)*s*13);ctx.stroke();
+    }
+
+    // Core — bright center
+    ctx.fillStyle=RG(0,0,0,0,0,s*3, 0,'#ffffff',0.4,'rgba(220,180,255,0.9)',1,'transparent');
+    ctx.beginPath();ctx.arc(0,0,s*3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(255,255,255,${0.6+0.4*P3})`;
+    ctx.beginPath();ctx.arc(0,0,s*1.2,0,Math.PI*2);ctx.fill();
+
+    // Fracture lines on facets
+    for(let i=0;i<4;i++){
+      const fa=i*Math.PI/2+0.3;
+      const fr=s*(4+i*1.5);
+      ctx.strokeStyle=`rgba(255,255,255,${0.15+0.1*Math.sin(t2+i)})`;ctx.lineWidth=0.6;
+      ctx.beginPath();ctx.moveTo(Math.cos(fa)*fr,Math.sin(fa)*fr);
+      ctx.lineTo(Math.cos(fa+0.4)*fr*0.6,Math.sin(fa+0.4)*fr*0.6);ctx.stroke();
+    }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TİTAN (titan) — heavy battlecruiser
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='titan'){
+    const s=sc*10/7.5; // titan uses S/10
+
+    // Quad engine flames
+    for(const sv of[-1.5,-0.5,0.5,1.5]){
+      flame(-s*22,sv*s*6,-1,0,s*2.5,s*32,'#ffdd44','#ffaa00',sv%1===0?P:P2);
+      flame(-s*22,sv*s*6,-1,0,s*1.0,s*24,'#ffffff','#ffee88',P3);
+    }
+
+    // Main hull — massive multi-section
+    ctx.fillStyle=G(0,-s*13,0,s*13, 0,'#7788bb',0.25,'#99aacc',0.5,'#667799',0.75,'#556688',1,'#3a4a6a');
+    poly(s*32,0, s*24,-s*13, -s*22,-s*13, -s*22,s*13, s*24,s*13);ctx.fill();
+
+    // Dorsal superstructure
+    ctx.fillStyle=G(0,-s*18,0,-s*13, 0,'#aabbcc',0.5,'#8899aa',1,'#667788');
+    poly(s*20,-s*13, s*14,-s*19, -s*8,-s*19, -s*8,-s*13);ctx.fill();
+    // Superstructure windows
+    for(let i=0;i<4;i++){
+      const wx=-s*5+i*s*5.5;
+      ctx.fillStyle='#334455';ctx.fillRect(wx,-s*17.5,s*3,s*2.5);
+      ctx.fillStyle=`rgba(0,200,255,${0.3+0.15*Math.sin(T*2+i)})`;
+      ctx.fillRect(wx+s*0.3,-s*17.2,s*2.4,s*1.8);
+      ctx.fillStyle='rgba(200,240,255,0.25)';ctx.fillRect(wx+s*0.3,-s*17.2,s*2.4,s*0.8);
+    }
+
+    // Hull armour plating (beveled)
+    for(let i=0;i<4;i++){
+      const px=-s*22+i*s*11;
+      ctx.fillStyle=i%2===0?'rgba(100,120,160,0.25)':'rgba(80,100,140,0.15)';
+      ctx.fillRect(px+s*0.5,-s*12.5,s*10,s*25);
+      // Bevel edges
+      ctx.strokeStyle='rgba(150,170,200,0.2)';ctx.lineWidth=1;
+      ctx.strokeRect(px+s*0.5,-s*12.5,s*10,s*25);
+      // Rivet rows
+      rivets([px+s*1,-s*12, px+s*1,0, px+s*1,s*12,
+              px+s*9,-s*12, px+s*9,0, px+s*9,s*12],s*0.8,'#8899aa');
+    }
+
+    // Lower battle damage stripes (wear)
+    ctx.fillStyle='rgba(30,40,60,0.3)';
+    for(let i=0;i<6;i++){
+      const bx=-s*15+i*s*8,bw=s*(1+Math.sin(i*2.3)*0.5);
+      ctx.fillRect(bx,s*5,bw,s*6);
+    }
+
+    // Side turrets
+    for(const sv of[-1,1]){
+      // Turret base
+      ctx.fillStyle=G(-s*2,-s*3,-s*2,s*3, 0,'#3a4a6a',1,'#2a3a5a');
+      ctx.beginPath();ctx.arc(s*5,sv*s*13,s*3.8,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#4a5a7a';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(s*5,sv*s*13,s*3.8,0,Math.PI*2);ctx.stroke();
+      // Turret housing
+      ctx.fillStyle=G(-s,0,s,0, 0,'#445577',1,'#334466');
+      ctx.beginPath();ctx.ellipse(s*5,sv*s*13,s*3,s*2,0,0,Math.PI*2);ctx.fill();
+      // Twin gun barrels
+      for(const gv of[-0.8,0.8]){
+        ctx.fillStyle=G(s*5,0,s*16,0, 0,'#3a4a66',0.5,'#556677',1,'#2a3a55');
+        ctx.fillRect(s*5,sv*s*13+gv*s,-s*0.6,s*(gv>0?0.6:-0.6));
+        ctx.fillRect(s*5,sv*(s*13+gv*s),s*11,sv*s*0.6);
+        // Muzzle
+        ctx.fillStyle='#223344';ctx.fillRect(s*15,sv*(s*13+gv*s)-s*0.35,s*1.5,sv*s*0.7);
+        ctx.fillStyle=`rgba(255,180,50,${0.1+0.08*P2})`;
+        ctx.fillRect(s*15.5,sv*(s*13+gv*s)-s*0.25,s*0.8,sv*s*0.5);
+      }
+    }
+
+    // Nose section — armoured prow
+    ctx.fillStyle=G(s*24,-s*2,s*34,s*2, 0,'#aabbdd',0.4,'#8899bb',1,'#556688');
+    poly(s*24,-s*13, s*34,0, s*24,s*13);ctx.fill();
+    // Prow heat lines
+    for(const sv of[-1,1]){
+      ctx.strokeStyle='rgba(100,140,180,0.35)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(s*24,sv*s*5);ctx.lineTo(s*32,sv*s*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s*24,sv*s*10);ctx.lineTo(s*30,sv*s*5);ctx.stroke();
+    }
+
+    // Bridge command deck
+    const bg2=G(s*16,-s*6,s*24,s*6, 0,'#1a2a44',0.5,'#2a3a55',1,'#1a2a44');
+    ctx.fillStyle=bg2;ctx.beginPath();ctx.ellipse(s*18,0,s*6,s*4.5,0,0,Math.PI*2);ctx.fill();
+    cockpit(s*18,0,s*5.5,s*4,0,'#0a1a2e');
+    // Bridge windows (row)
+    for(const bwx of[-s*3.5,-s*1,s*1.5,s*4]){
+      const by=bwx*0.2;
+      ctx.fillStyle='#1a2a3a';ctx.fillRect(s*18+bwx,-s*1,s*2,s*2);
+      ctx.fillStyle=`rgba(0,180,255,${0.25+0.1*P2})`;ctx.fillRect(s*18+bwx+s*0.2,-s*0.8,s*1.6,s*1.6);
+      ctx.fillStyle='rgba(200,235,255,0.2)';ctx.fillRect(s*18+bwx+s*0.2,-s*0.8,s*1.6,s*0.6);
+    }
+
+    // Spine pipes
+    pipe(-s*22,s*2,s*20,s*2,s*1,'#4a5a7a');
+    pipe(-s*22,-s*2,s*20,-s*2,s*1,'#4a5a7a');
+    // Coolant lines
+    pipe(-s*16,s*4,s*10,s*4,s*0.7,'#2a5a8a');
+    pipe(-s*16,-s*4,s*10,-s*4,s*0.7,'#2a5a8a');
+
+    // Engine pods
+    for(const sv of[-1.5,-0.5,0.5,1.5]){
+      ctx.fillStyle=G(-s*24,-s*3,-s*24,s*3, 0,'#2a3a55',1,'#1a2a44');
+      ctx.beginPath();ctx.ellipse(-s*18,sv*s*6,s*6,s*3.2,0,0,Math.PI*2);ctx.fill();
+      // Cooling grooves
+      for(let i=0;i<3;i++){
+        ctx.strokeStyle='rgba(40,60,100,0.7)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(-s*18,sv*s*6,s*(1.5+i*1.2),0,Math.PI*2);ctx.stroke();
+      }
+      nozzle(-s*22,sv*s*6,s*2.8,s*1.8,s*5,'#ffcc44',sv%1===0?P:P2);
+    }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LAZER GEMİSİ (lazer)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='lazer'){
+    const s=sc*9/7.5;
+
+    // Twin engine flames
+    for(const sv of[-1,1]){
+      flame(-s*10,sv*s*3.5,-1,0,s*1.8,s*24,'#00ffff','#0044ff',P);
+      flame(-s*10,sv*s*3.5,-1,0,s*0.7,s*18,'#aaffff','#44aaff',P3);
+    }
+
+    // Forward laser cannon — charged shot
+    if(P>0.25){
+      const ll=s*50+P*s*25;
+      // Beam glow
+      ctx.fillStyle=G(s*18,0,s*18+ll,0, 0,'rgba(0,255,255,0.12)',0.5,'rgba(0,200,255,0.06)',1,'transparent');
+      ctx.fillRect(s*18,-s*3,ll,s*6);
+      // Beam core
+      ctx.fillStyle=G(s*18,0,s*18+ll*0.6,0, 0,'#ffffff',0.2,'rgba(0,255,255,0.9)',0.7,'rgba(0,150,255,0.3)',1,'transparent');
+      ctx.fillRect(s*18,-s*0.7,ll*0.6,s*1.4);
+      // Hot core
+      ctx.fillStyle=G(s*18,0,s*18+ll*0.2,0, 0,'#ffffff',1,'transparent');
+      ctx.fillRect(s*18,-s*0.25,ll*0.2,s*0.5);
+    }
+
+    // Hull fuselage
+    ctx.fillStyle=G(0,-s*5,0,s*5, 0,'#7aaccc',0.3,'#99ccdd',0.7,'#5588aa',1,'#2a4455');
+    poly(s*22,0, s*14,-s*5, -s*10,-s*5, -s*10,s*5, s*14,s*5);ctx.fill();
+
+    // Upper hull section
+    ctx.fillStyle=G(0,-s*7,0,-s*1, 0,'#cceeff',0.4,'#aaddee',1,'#6699aa');
+    poly(s*18,0, s*10,-s*4, s*0,-s*5, -s*8,-s*5, -s*8,-s*1.5, s*8,-s*1);ctx.fill();
+
+    // Cannon spine — long central barrel
+    ctx.fillStyle=G(s*4,-s*1.5,s*4,s*1.5, 0,'#3a5566',0.4,'#668899',0.6,'#aaccdd44',1,'#3a5566');
+    ctx.fillRect(s*4,-s*1.5,s*16,s*3);
+    // Barrel rings
+    for(const bx of[s*6,s*9,s*12,s*15,s*18]){
+      ctx.fillStyle=G(bx,-s*2,bx,s*2, 0,'#224466',0.5,'#446688',1,'#224466');
+      ctx.fillRect(bx-s*0.5,-s*1.8,s*1,s*3.6);
+      ctx.strokeStyle='rgba(0,200,255,0.25)';ctx.lineWidth=0.8;
+      ctx.strokeRect(bx-s*0.5,-s*1.8,s*1,s*3.6);
+    }
+    // Cannon muzzle
+    ctx.fillStyle=G(s*19,-s*1,s*19,s*1, 0,'#2a4466',1,'#4a6688');
+    ctx.fillRect(s*19,-s*1.2,s*2.5,s*2.4);
+    ctx.strokeStyle='rgba(0,240,255,0.5)';ctx.lineWidth=1;
+    ctx.strokeRect(s*19,-s*1.2,s*2.5,s*2.4);
+    ctx.fillStyle=`rgba(0,255,255,${0.4+0.35*P2})`;
+    ctx.beginPath();ctx.arc(s*21,0,s*0.9,0,Math.PI*2);ctx.fill();
+
+    // Wing fins — swept
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(0,0,0,sv*s*14, 0,'#3a5577',0.5,'#4a6688',1,'#1a3344');
+      poly(s*4,sv*s*5, -s*2,sv*s*13, -s*8,sv*s*13, -s*8,sv*s*5);ctx.fill();
+      // Fin LE
+      ctx.fillStyle=G(s*4,sv*s*5,-s*2,sv*s*13, 0,'#557799',1,'#2a4466');
+      poly(s*4,sv*s*5, s*1,sv*s*6, -s*1,sv*s*12, -s*2,sv*s*13);ctx.fill();
+      // Fin tip light
+      ctx.fillStyle='#1a3344';ctx.beginPath();ctx.arc(-s*5,sv*s*12.5,s*1.4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(0,220,255,${0.6+0.3*P2})`;ctx.beginPath();ctx.arc(-s*5,sv*s*12.5,s*0.8,0,Math.PI*2);ctx.fill();
+      // Sub-fin
+      ctx.fillStyle='#2a4466';
+      poly(s*0,sv*s*5, s*4,sv*s*5, s*2,sv*s*8);ctx.fill();
+    }
+
+    // Panel lines
+    for(const lx of[-s*4,s*0,s*4,s*8]){panel(lx,-s*5,lx,s*5);}
+    panel(-s*10,-s*1.5,s*14,-s*1.5);
+    // Tech markings
+    heatTiles(-s*6,-s*5,s*12,s*10,4,3,'#1a3a5a');
+
+    // Pipes — power conduits
+    pipe(-s*8,-s*4,-s*2,-s*4,s*0.9,'#224466');
+    pipe(-s*8,s*4,-s*2,s*4,s*0.9,'#224466');
+    pipe(s*0,-s*5,s*0,s*5,s*0.6,'#336688');
+
+    // Cockpit
+    cockpit(s*6,0,s*4,s*2.5,0,'#0a1a2e');
+    ctx.fillStyle=`rgba(0,200,255,${0.08+0.06*P2})`;
+    ctx.beginPath();ctx.ellipse(s*6,0,s*2.5,s*1.5,0,0,Math.PI*2);ctx.fill();
+
+    // Engine pods
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(-s*12,-s*2,-s*12,s*2, 0,'#1a3344',1,'#0a2233');
+      ctx.beginPath();ctx.ellipse(-s*7,sv*s*3.5,s*4.5,s*2.4,0,0,Math.PI*2);ctx.fill();
+      for(let i=0;i<3;i++){
+        ctx.strokeStyle='rgba(20,60,100,0.6)';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(-s*7,sv*s*3.5,s*(1.2+i*0.9),0,Math.PI*2);ctx.stroke();
+      }
+      nozzle(-s*10,sv*s*3.5,s*2.2,s*1.3,s*4,'#00ffff',sv>0?P:P2);
+    }
+    rivets([-s*9,-s*5,-s*4,-s*5,s*1,-s*5,-s*9,s*5,-s*4,s*5,s*1,s*5],s*0.7,'#7799aa');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FÜZYON GEMİSİ (fuzyon)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='fuzyon'){
+    const s=sc*9/7.5;
+
+    // Plasma exhaust rings (expanding)
+    for(let r2=0;r2<5;r2++){
+      const rp=(T*2.2+r2*0.28)%1;
+      const rs=s*(2.5+rp*16);const ra=(1-rp)*0.55;
+      ctx.strokeStyle=`rgba(80,140,255,${ra*0.8})`;ctx.lineWidth=2*ra+0.4;
+      ctx.beginPath();ctx.arc(-s*11,0,rs,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Engine plumes
+    for(const sv of[-1,1]){
+      flame(-s*10,sv*s*7,-1,0,s*2,s*24,'#4488ff','#0022ff',P);
+      flame(-s*10,sv*s*7,-1,0,s*0.8,s*18,'#88aaff','#4466ff',P3);
+    }
+
+    // Hull pods (catamaran)
+    for(const sv of[-1,1]){
+      ctx.fillStyle=G(-s*10,-s*3.5,-s*10,s*3.5, 0,'#556699',0.3,'#7788bb',0.7,'#445588',1,'#2a3a66');
+      ctx.beginPath();ctx.ellipse(s*0,sv*s*7,s*12,s*3.5,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(80,120,200,0.35)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.ellipse(s*0,sv*s*7,s*12,s*3.5,0,0,Math.PI*2);ctx.stroke();
+      // Pod panel lines
+      for(const lx of[-s*6,-s*2,s*2,s*6]){panel(lx,sv*s*4,lx,sv*s*10,'rgba(60,90,160,0.3)');}
+      // Pod RCS thrusters
+      for(const rx of[-s*8,s*8]){
+        ctx.fillStyle='#2a3a66';ctx.fillRect(rx-s*0.6,sv*s*7-s*0.8,s*1.2,s*1.6);
+        ctx.fillStyle=`rgba(100,160,255,${0.2+0.15*P2})`;
+        ctx.fillRect(rx-s*0.4,sv*s*7-s*0.6,s*0.8,s*0.6);
+      }
+      // Engine pod
+      ctx.fillStyle=G(-s*12,-s*2,-s*12,s*2, 0,'#1a2a55',1,'#0a1a44');
+      ctx.beginPath();ctx.ellipse(-s*8,sv*s*7,s*5,s*2.8,0,0,Math.PI*2);ctx.fill();
+      for(let i=0;i<3;i++){
+        ctx.strokeStyle='rgba(30,60,130,0.5)';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(-s*8,sv*s*7,s*(1.3+i*0.9),0,Math.PI*2);ctx.stroke();
+      }
+      nozzle(-s*10,sv*s*7,s*2.5,s*1.5,s*4,'#4488ff',sv>0?P:P2);
+    }
+
+    // Connecting spars (structural)
+    ctx.fillStyle=G(0,-s*1.5,0,s*1.5, 0,'#3a4a77',0.5,'#556699',1,'#3a4a77');
+    ctx.fillRect(-s*10,-s*1.8,s*22,s*3.6);
+    ctx.strokeStyle='rgba(80,110,180,0.25)';ctx.lineWidth=0.8;
+    ctx.strokeRect(-s*10,-s*1.8,s*22,s*3.6);
+    // Spar detail
+    for(const lx of[-s*4,s*0,s*4,s*8]){panel(lx,-s*1.8,lx,s*1.8,'rgba(80,110,180,0.3)');}
+
+    // Reactor sphere — central glowing core
+    const rsph=RG(-s*1.5,-s*1.5,0,0,0,s*9,
+      0,'rgba(220,235,255,0.98)',0.2,'rgba(120,160,255,0.9)',0.5,'rgba(60,100,220,0.6)',0.8,'rgba(20,50,160,0.3)',1,'transparent');
+    ctx.fillStyle=rsph;ctx.beginPath();ctx.arc(0,0,s*9,0,Math.PI*2);ctx.fill();
+
+    // Reactor equatorial rings
+    for(let r2=0;r2<2;r2++){
+      const ra=T*0.5+r2*Math.PI/2;
+      ctx.save();ctx.rotate(ra);
+      ctx.strokeStyle=`rgba(160,200,255,${0.45+0.2*Math.sin(T*2+r2)})`;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.ellipse(0,0,s*9,s*3.5,0,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
+
+    // Reactor detail — internal lattice
+    for(let i=0;i<6;i++){
+      const ra2=i*Math.PI/3;
+      ctx.strokeStyle=`rgba(180,210,255,${0.15+0.08*P2})`;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(Math.cos(ra2)*s*3,Math.sin(ra2)*s*3);
+      ctx.lineTo(Math.cos(ra2+Math.PI/3)*s*3,Math.sin(ra2+Math.PI/3)*s*3);ctx.stroke();
+    }
+
+    // Cockpit
+    cockpit(s*7,-s*1,s*5.5,s*3,0,'#0a1a3a');
+    ctx.fillStyle=`rgba(80,140,255,${0.08+0.06*P2})`;
+    ctx.beginPath();ctx.ellipse(s*7,-s*0.5,s*3.5,s*2,0,0,Math.PI*2);ctx.fill();
+
+    // Nose probe
+    ctx.fillStyle=G(s*9,-s*0.5,s*16,s*0.5, 0,'#6688aa',1,'#334455');
+    ctx.fillRect(s*9,-s*0.6,s*8,s*1.2);
+    ctx.fillStyle='#224466';ctx.beginPath();ctx.arc(s*17,0,s*1.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(100,180,255,${0.3+0.2*P2})`;ctx.beginPath();ctx.arc(s*17,0,s*0.7,0,Math.PI*2);ctx.fill();
+
+    // Pipes — plasma conduits
+    pipe(-s*10,s*3.5,s*0,s*3.5,s*0.8,'#3a5a99');
+    pipe(-s*10,-s*3.5,s*0,-s*3.5,s*0.8,'#3a5a99');
+    rivets([-s*8,s*3.5,s*0,s*3.5,s*6,s*0,-s*8,-s*3.5,s*0,-s*3.5],s*0.7,'#8899cc');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ZAMAN GEMİSİ (zaman)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='zaman'){
+    const s=sc*9/7.5;
+
+    // Time distortion rings
+    for(let i=0;i<6;i++){
+      const rp=(T*1.6+i*0.22)%1;
+      const rw=s*(2+rp*20),rh=rw*0.35;
+      const ra=(1-rp)*0.45;
+      const hue=Math.floor(30+rp*50);
+      ctx.strokeStyle=`hsla(${hue},100%,60%,${ra})`;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.ellipse(0,0,rw,rh,0,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Engine flame
+    flame(-s*9,0,-1,0,s*3.5,s*24,'#ffcc44','#ff8800',P);
+    flame(-s*9,0,-1,0,s*1.5,s*18,'#ffffff','#ffee88',P3);
+
+    // Hull — hourglass/temporal shape
+    ctx.fillStyle=G(-s*9,s*8,s*2,-s*8, 0,'#b88840',0.3,'#ddaa55',0.6,'#aa7730',1,'#664420');
+    poly(s*18,0, s*10,-s*7.5, s*0,-s*4.5, -s*4,-s*7.5, -s*9,-s*7.5, -s*9,s*7.5, -s*4,s*7.5, s*0,s*4.5, s*10,s*7.5);ctx.fill();
+
+    // Bronze plating panels
+    for(let i=0;i<3;i++){
+      const px=-s*8+i*s*5.5;
+      ctx.fillStyle=i%2?'rgba(200,150,60,0.15)':'rgba(180,130,40,0.1)';
+      ctx.fillRect(px,-s*7,s*5,s*14);
+      ctx.strokeStyle='rgba(200,160,80,0.3)';ctx.lineWidth=0.8;
+      ctx.strokeRect(px,-s*7,s*5,s*14);
+    }
+
+    // Decorative trim lines
+    ctx.strokeStyle='rgba(255,200,80,0.55)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(s*10,-s*7.5);ctx.lineTo(s*0,-s*4.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(s*10,s*7.5);ctx.lineTo(s*0,s*4.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-s*4,-s*7.5);ctx.lineTo(s*0,-s*4.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-s*4,s*7.5);ctx.lineTo(s*0,s*4.5);ctx.stroke();
+
+    // Gold filigree detail
+    ctx.strokeStyle='rgba(255,220,100,0.25)';ctx.lineWidth=0.7;
+    for(let i=0;i<5;i++){
+      const fx=-s*7+i*s*3;
+      ctx.beginPath();ctx.moveTo(fx,-s*6);ctx.quadraticCurveTo(fx+s*1.5,0,fx,-s*0);ctx.stroke();
+    }
+
+    // Clock face — main feature
+    ctx.fillStyle=RG(s*10,-s*1,0,s*10,0,s*7,
+      0,'#ffeeaa',0.3,'#ddaa44',0.7,'#aa7820',1,'#6a4410aa');
+    ctx.beginPath();ctx.arc(s*10,0,s*7,0,Math.PI*2);ctx.fill();
+    // Clock rim
+    ctx.strokeStyle='rgba(200,160,60,0.7)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(s*10,0,s*7,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='rgba(255,200,80,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(s*10,0,s*6.2,0,Math.PI*2);ctx.stroke();
+    // Clock face highlight
+    ctx.fillStyle=RG(s*8,-s*3,0,s*9,-s*1,s*4, 0,'rgba(255,250,220,0.45)',1,'transparent');
+    ctx.beginPath();ctx.arc(s*10,0,s*7,0,Math.PI*2);ctx.fill();
+
+    // Hour tick marks
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6;const isMain=i%3===0;
+      const r0=s*(isMain?4.5:5.2),r1=s*6.2;
+      ctx.strokeStyle=isMain?'rgba(80,40,0,0.9)':'rgba(80,40,0,0.5)';
+      ctx.lineWidth=isMain?1.8:0.9;
+      ctx.beginPath();
+      ctx.moveTo(s*10+Math.cos(a)*r0,Math.sin(a)*r0);
+      ctx.lineTo(s*10+Math.cos(a)*r1,Math.sin(a)*r1);ctx.stroke();
+      // Hour numerals (Roman dots)
+      if(isMain){
+        ctx.fillStyle='rgba(60,30,0,0.8)';
+        ctx.beginPath();ctx.arc(s*10+Math.cos(a)*s*3.8,Math.sin(a)*s*3.8,s*0.5,0,Math.PI*2);ctx.fill();
+      }
+    }
+
+    // Clock hands (spinning at different speeds)
+    ctx.save();ctx.translate(s*10,0);
+    // Minute hand
+    ctx.strokeStyle='#2a1000';ctx.lineWidth=2;ctx.lineCap='round';
+    ctx.rotate(T*2.5);ctx.beginPath();ctx.moveTo(0,s*0.8);ctx.lineTo(0,-s*5);ctx.stroke();
+    ctx.lineCap='butt';
+    // Hour hand
+    ctx.rotate(-T*2.5+T*0.8);ctx.lineWidth=2.5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(0,s*0.6);ctx.lineTo(0,-s*3.5);ctx.stroke();
+    // Second hand
+    ctx.rotate(-T*0.8+T*18);ctx.lineWidth=0.8;ctx.strokeStyle='#cc2200';ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(0,s*1);ctx.lineTo(0,-s*4.8);ctx.stroke();
+    // Center pin
+    ctx.fillStyle='#441800';ctx.beginPath();ctx.arc(0,0,s*0.9,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#cc8800';ctx.beginPath();ctx.arc(0,0,s*0.45,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+
+    // Gear mechanism visible (side)
+    for(const sv of[-1,1]){
+      ctx.strokeStyle=`rgba(180,130,40,${0.3+0.1*Math.sin(T*3+sv)})`;ctx.lineWidth=1;
+      for(let g=0;g<2;g++){
+        const gr=s*(2+g*1.2),gx=-s*5+g*s*2,gy=sv*s*3;
+        ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.arc(gx,gy,gr*0.4,0,Math.PI*2);ctx.fill();
+        for(let t2=0;t2<8;t2++){
+          const ta=t2*Math.PI/4+T*(sv>0?1:-1)*(g?-1.2:0.8);
+          ctx.beginPath();ctx.moveTo(gx+Math.cos(ta)*gr,gy+Math.sin(ta)*gr);
+          ctx.lineTo(gx+Math.cos(ta)*(gr+s*0.8),gy+Math.sin(ta)*(gr+s*0.8));ctx.stroke();
+        }
+      }
+    }
+
+    // Pipes — brass tubes
+    pipe(-s*8,-s*6,s*6,-s*6,s*0.9,'#886633');
+    pipe(-s*8,s*6,s*6,s*6,s*0.9,'#886633');
+    pipe(-s*4,-s*6,-s*4,s*6,s*0.7,'#aa8844');
+    rivets([s*4,-s*7,s*8,-s*7,s*4,s*7,s*8,s*7,-s*6,-s*7,-s*6,s*7],s*0.7,'#aa8844');
+
+    // Nozzle
+    ctx.fillStyle=G(-s*11,-s*4,-s*11,s*4, 0,'#5a4020',1,'#3a2810');
+    ctx.beginPath();ctx.ellipse(-s*7,0,s*4,s*3.2,0,0,Math.PI*2);ctx.fill();
+    for(let i=0;i<4;i++){ctx.strokeStyle='rgba(140,100,40,0.5)';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(-s*7,0,s*(1+i*0.7),0,Math.PI*2);ctx.stroke();}
+    nozzle(-s*9,0,s*3.2,s*2,s*5,'#ffcc44',P);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EJDERHA (ejderha)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='ejderha'){
+    const s=sc*9/7.5;
+
+    // Ice breath cloud particles
+    for(let i=0;i<7;i++){
+      const bp=(T*1.8+i*0.16)%1;
+      const bx=s*22+bp*s*40,by=Math.sin(T*2.5+i*1.1)*s*5;
+      const br=s*(1.2+bp*5.5),ba=(1-bp)*0.5;
+      ctx.fillStyle=`rgba(160,230,255,${ba*0.45})`;
+      ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);ctx.fill();
+    }
+    // Ice shard particles
+    for(let i=0;i<5;i++){
+      const sp=(T*2+i*0.38)%1;
+      const sx2=s*20+sp*s*38,sy2=Math.sin(T*3+i*1.8)*s*6;
+      const sa=1-sp;
+      ctx.save();ctx.translate(sx2,sy2);ctx.rotate(T*4+i);
+      ctx.strokeStyle=`rgba(200,240,255,${sa*0.65})`;ctx.lineWidth=0.8;
+      for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(0,-s*1.8);ctx.lineTo(0,s*1.8);ctx.stroke();ctx.rotate(Math.PI/3);}
+      ctx.restore();
+    }
+    // Breath glow
+    const breathG=G(s*22,0,s*55,0,
+      0,`rgba(160,235,255,${0.3+P2*0.25})`,0.4,`rgba(100,200,255,${0.18+P2*0.1})`,1,'transparent');
+    ctx.fillStyle=breathG;
+    poly(s*22,-s*3, s*55,-s*8, s*55,s*8, s*22,s*3);ctx.fill();
+
+    // Engine flame
+    flame(-s*10,0,-1,0,s*3,s*22,'#aaddff','#4499ff',P);
+    flame(-s*10,0,-1,0,s*1.2,s*16,'#ffffff','#aaddff',P3);
+
+    // Dragon body — complex organic shape
+    ctx.fillStyle=G(-s*10,s*9,s*4,-s*9, 0,'#88ccee',0.3,'#aaddff',0.6,'#5599bb',1,'#2a5a77');
+    poly(s*24,0, s*17,-s*6, s*4,-s*8, -s*4,-s*6, -s*10,-s*6, -s*10,s*6, -s*4,s*6, s*4,s*8, s*17,s*6);ctx.fill();
+
+    // Body armour plates (scale-like)
+    for(let i=0;i<7;i++){
+      const px=-s*7+i*s*4.5;const py=0;
+      const pw=s*4.5,ph=s*14;
+      const ag=G(px,-ph/2,px,ph/2, 0,'rgba(120,190,220,0.2)',0.5,'rgba(160,220,245,0.15)',1,'rgba(80,150,180,0.1)');
+      ctx.fillStyle=ag;ctx.beginPath();ctx.ellipse(px,py,pw/2,ph/2,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=`rgba(100,180,210,${0.2+0.08*Math.sin(T+i)})`;ctx.lineWidth=0.8;
+      ctx.beginPath();ctx.ellipse(px,py,pw/2,ph/2,0,0,Math.PI*2);ctx.stroke();
+    }
+
+    // Scale spine detail
+    ctx.strokeStyle='rgba(150,200,230,0.25)';ctx.lineWidth=0.8;
+    for(let i=0;i<6;i++){
+      const sx3=-s*6+i*s*4;
+      ctx.beginPath();ctx.arc(sx3,0,s*3.5,0.2,Math.PI-0.2);ctx.stroke();
+    }
+
+    // Wings
+    for(const sv of[-1,1]){
+      // Main membrane
+      const wg=G(0,0,0,sv*s*22, 0,'rgba(80,160,200,0.75)',0.4,'rgba(50,120,170,0.5)',0.8,'rgba(20,80,130,0.25)',1,'transparent');
+      ctx.fillStyle=wg;
+      poly(s*6,sv*s*6, -s*2,sv*s*22, -s*8,sv*s*20, -s*10,sv*s*6);ctx.fill();
+      // Membrane veins (prominent)
+      const veins=[[s*4,sv*s*6,s*0,sv*s*20],[s*0,sv*s*6,-s*3,sv*s*19],[-s*4,sv*s*6,-s*6,sv*s*18]];
+      veins.forEach(([x0,y0,x1,y1])=>{
+        ctx.strokeStyle=`rgba(120,190,230,${0.5+0.15*Math.sin(T*1.5)})`;ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+      });
+      // Wing claw
+      ctx.fillStyle='#88ccee';ctx.beginPath();ctx.arc(-s*5,sv*s*20.5,s*1.8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#aaddff';ctx.beginPath();ctx.arc(-s*5,sv*s*20.5,s*0.9,0,Math.PI*2);ctx.fill();
+      // Secondary rear wing
+      ctx.fillStyle=`rgba(60,130,170,0.45)`;
+      poly(-s*6,sv*s*6,-s*10,sv*s*14,-s*13,sv*s*12,-s*10,sv*s*6);ctx.fill();
+    }
+
+    // Ice spine spikes
+    for(let i=0;i<5;i++){
+      const bsx=-s*5+i*s*4.5;
+      const bsh=s*(1.8+Math.sin(i*1.3)*0.8+0.5);
+      // Spike gradient
+      ctx.fillStyle=G(bsx,-s*8,bsx+s*1.2,-s*8-bsh*2.5, 0,'#aaddff',0.5,'#ddeeff',1,'#ffffff');
+      poly(bsx,-s*8, bsx+s*1.2,-s*8-bsh*2.5, bsx+s*2.4,-s*8);ctx.fill();
+      // Spike highlight
+      ctx.fillStyle='rgba(255,255,255,0.5)';
+      poly(bsx+s*0.3,-s*8, bsx+s*1.2,-s*8-bsh*2.5, bsx+s*1.5,-s*8);ctx.fill();
+      // Ice crystal glint
+      ctx.fillStyle=`rgba(200,240,255,${0.4+0.3*Math.sin(T*2+i)})`;
+      ctx.beginPath();ctx.arc(bsx+s*1.2,-s*8-bsh*2.5,s*0.5,0,Math.PI*2);ctx.fill();
+    }
+
+    // Head — detailed
+    ctx.fillStyle=G(s*16,s*5,s*26,-s*5, 0,'#aaccee',0.4,'#c0ddf0',1,'#336688');
+    poly(s*16,-s*6, s*26,0, s*16,s*6);ctx.fill();
+    // Head scales
+    for(let i=0;i<3;i++){
+      ctx.strokeStyle=`rgba(160,210,240,0.3)`;ctx.lineWidth=0.8;
+      ctx.beginPath();ctx.arc(s*18,0,s*(2+i*1.5),0,Math.PI*2);ctx.stroke();
+    }
+    // Snout/muzzle
+    ctx.fillStyle=G(s*22,-s*2,s*27,s*2, 0,'#8ab5cc',1,'#4a8899');
+    poly(s*22,-s*3, s*27,0, s*22,s*3);ctx.fill();
+    // Nostril frost
+    ctx.fillStyle=`rgba(200,240,255,${0.2+0.15*P2})`;
+    ctx.beginPath();ctx.arc(s*25,-s*1,s*0.8,0,Math.PI*2);ctx.fill();
+
+    // Eye — complex
+    ctx.fillStyle='#0a1a22';ctx.beginPath();ctx.ellipse(s*19.5,-s*2,s*2.2,s*1.6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#cc1111';ctx.beginPath();ctx.ellipse(s*19.5,-s*2,s*1.8,s*1.2,0,0,Math.PI*2);ctx.fill();
+    // Slit pupil
+    ctx.fillStyle='#110000';ctx.beginPath();ctx.ellipse(s*19.5,-s*2,s*0.45,s*1.1,0,0,Math.PI*2);ctx.fill();
+    // Eye specular
+    ctx.fillStyle='rgba(255,255,255,0.75)';ctx.beginPath();ctx.arc(s*18.8,-s*2.6,s*0.55,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.35)';ctx.beginPath();ctx.arc(s*20.2,-s*1.6,s*0.25,0,Math.PI*2);ctx.fill();
+    // Eye glow
+    ctx.fillStyle=`rgba(255,50,50,${0.08+0.06*P2})`;
+    ctx.beginPath();ctx.arc(s*19.5,-s*2,s*3.5,0,Math.PI*2);ctx.fill();
+
+    // Pipes — cryo lines
+    pipe(-s*8,-s*5.5,s*14,-s*5.5,s*0.9,'#4488aa');
+    pipe(-s*8,s*5.5,s*14,s*5.5,s*0.9,'#4488aa');
+    pipe(s*0,-s*6,s*0,s*6,s*0.7,'#55aacc');
+    rivets([-s*6,-s*6,s*0,-s*6,s*6,-s*6,-s*6,s*6,s*0,s*6,s*6,s*6],s*0.7,'#88aacc');
+
+    // Nozzle — icy
+    ctx.fillStyle=G(-s*12,-s*4,-s*12,s*4, 0,'#2a5566',1,'#1a3344');
+    ctx.beginPath();ctx.ellipse(-s*7,0,s*4.5,s*3.2,0,0,Math.PI*2);ctx.fill();
+    for(let i=0;i<4;i++){ctx.strokeStyle='rgba(80,160,200,0.4)';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(-s*7,0,s*(1.2+i*0.8),0,Math.PI*2);ctx.stroke();}
+    nozzle(-s*10,0,s*3,s*1.8,s*5,'#aaddff',P);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TITAN ULTRA (titan2)
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='titan2'){
+    const s=sc*10/7.5;
+
+    // Quad plasma flames (orange/red — more aggressive)
+    for(const sv of[-1.5,-0.5,0.5,1.5]){
+      flame(-s*22,sv*s*6,-1,0,s*2.8,s*38,'#ff8800','#ff2200',sv%1===0?P:P2);
+      flame(-s*22,sv*s*6,-1,0,s*1.2,s*28,'#ffee88','#ff6600',P3);
+    }
+
+    // Main hull — darker, more aggressive
+    ctx.fillStyle=G(0,-s*13,0,s*13, 0,'#667799',0.25,'#778899',0.5,'#4a5577',0.75,'#3a4466',1,'#1a2244');
+    poly(s*32,0, s*24,-s*13, -s*22,-s*13, -s*22,s*13, s*24,s*13);ctx.fill();
+
+    // Red accent plating strips
+    ctx.fillStyle='rgba(200,40,20,0.35)';
+    ctx.fillRect(-s*22,-s*13,s*46,s*2.5);ctx.fillRect(-s*22,s*10.5,s*46,s*2.5);
+
+    // Armour plates with battle damage
+    for(let i=0;i<4;i++){
+      const px=-s*22+i*s*11;
+      ctx.fillStyle=i%2===0?'rgba(80,90,120,0.3)':'rgba(60,70,100,0.2)';
+      ctx.fillRect(px+s*0.5,-s*12.5,s*10,s*25);
+      ctx.strokeStyle='rgba(100,120,150,0.2)';ctx.lineWidth=0.8;ctx.strokeRect(px+s*0.5,-s*12.5,s*10,s*25);
+      // Battle scorch marks
+      if(i>0){
+        ctx.fillStyle=`rgba(15,10,5,${0.3+0.1*i})`;
+        ctx.beginPath();ctx.ellipse(px+s*5,0,s*3,s*6,0.3+i*0.2,0,Math.PI*2);ctx.fill();
+      }
+    }
+
+    // Dorsal superstructure (raised bridge)
+    ctx.fillStyle=G(0,-s*20,0,-s*13, 0,'#8899aa',0.5,'#667788',1,'#445566');
+    poly(s*20,-s*13, s*14,-s*20, -s*8,-s*20, -s*8,-s*13);ctx.fill();
+    // Bridge detail
+    for(let i=0;i<5;i++){
+      const wx=-s*5+i*s*5;
+      ctx.fillStyle='#223344';ctx.fillRect(wx,-s*18.5,s*3,s*2.8);
+      ctx.fillStyle=`rgba(255,120,0,${0.25+0.1*Math.sin(T*2+i)})`;
+      ctx.fillRect(wx+s*0.3,-s*18.2,s*2.4,s*1.8);
+      ctx.fillStyle='rgba(255,200,150,0.25)';ctx.fillRect(wx+s*0.3,-s*18.2,s*2.4,s*0.7);
+    }
+
+    // Massive cannons
+    for(const sv of[-1,1]){
+      // Turret housing
+      ctx.fillStyle=G(-s*3,-s*3,-s*3,s*3, 0,'#2a3a55',1,'#1a2a44');
+      ctx.beginPath();ctx.arc(s*4,sv*s*13,s*4.5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#3a4a66';ctx.lineWidth=2;ctx.beginPath();ctx.arc(s*4,sv*s*13,s*4.5,0,Math.PI*2);ctx.stroke();
+      // Turret top detail
+      ctx.fillStyle=G(s*2,-s*2,s*6,s*2, 0,'#334466',1,'#223355');
+      ctx.beginPath();ctx.ellipse(s*4,sv*s*13,s*3.5,s*2,0,0,Math.PI*2);ctx.fill();
+      // Triple barrel cluster
+      for(const gv of[-1.2,0,1.2]){
+        ctx.fillStyle=G(s*5,0,s*18,0, 0,'#2a3a55',0.5,'#445566',1,'#1a2a44');
+        ctx.fillRect(s*5,sv*s*13+gv*s,s*14,sv*s*0.7);
+        // Barrel cooling rings
+        for(const rx of[s*7,s*10,s*13,s*16]){
+          ctx.fillStyle='#3a4a66';ctx.fillRect(rx,sv*(s*13+gv*s),s*0.8,sv*s*0.7);
+        }
+        // Muzzle flash emitter
+        ctx.fillStyle='#1a2a44';ctx.fillRect(s*18,sv*(s*13+gv*s)-s*0.1,s*1.2,sv*s*0.5);
+        ctx.fillStyle=`rgba(255,100,0,${0.15+0.1*P2})`;
+        ctx.fillRect(s*18.5,sv*(s*13+gv*s),s*0.6,sv*s*0.3);
+      }
+    }
+
+    // Armoured prow
+    ctx.fillStyle=G(s*24,-s*2,s*36,s*2, 0,'#8899bb',0.4,'#667799',1,'#3a4a6a');
+    poly(s*24,-s*13, s*36,0, s*24,s*13);ctx.fill();
+    // Prow impact grill
+    for(let i=0;i<4;i++){
+      ctx.strokeStyle='rgba(80,100,140,0.4)';ctx.lineWidth=1;
+      for(const sv of[-1,1]){
+        ctx.beginPath();ctx.moveTo(s*(28-i*1.5),sv*s*(13-i*2));ctx.lineTo(s*(34-i*0.5),0);ctx.stroke();
+      }
+    }
+
+    // Command bridge — orange tinted
+    ctx.fillStyle=G(s*14,-s*5,s*24,s*5, 0,'#1a2234',0.5,'#2a3245',1,'#1a2234');
+    ctx.beginPath();ctx.ellipse(s*18,0,s*7,s*5,0,0,Math.PI*2);ctx.fill();
+    cockpit(s*18,0,s*6,s*4.5,0,'#1a0a00');
+    // Orange bridge tint
+    ctx.fillStyle=`rgba(255,80,0,${0.06+0.05*P2})`;
+    ctx.beginPath();ctx.ellipse(s*18,0,s*5,s*3.5,0,0,Math.PI*2);ctx.fill();
+    // Bridge window row
+    for(const bwx of[-s*3,-s*1,s*1,s*3]){
+      ctx.fillStyle='#1a0800';ctx.fillRect(s*18+bwx,-s*1.2,s*1.8,s*2.4);
+      ctx.fillStyle=`rgba(255,120,0,${0.3+0.12*P2})`;ctx.fillRect(s*18+bwx+s*0.2,-s*1,s*1.4,s*1.6);
+      ctx.fillStyle='rgba(255,200,150,0.2)';ctx.fillRect(s*18+bwx+s*0.2,-s*1,s*1.4,s*0.6);
+    }
+
+    // Spine pipes (thicker)
+    pipe(-s*22,s*2.5,s*20,s*2.5,s*1.2,'#3a4a66');
+    pipe(-s*22,-s*2.5,s*20,-s*2.5,s*1.2,'#3a4a66');
+    // Red accent pipes
+    pipe(-s*16,s*5.5,s*8,s*5.5,s*0.8,'#662222');
+    pipe(-s*16,-s*5.5,s*8,-s*5.5,s*0.8,'#662222');
+
+    // Heat vents (lower)
+    for(let i=0;i<6;i++){
+      const vx=-s*18+i*s*6;
+      ctx.fillStyle='#1a2234';ctx.fillRect(vx,s*12,s*3.5,s*1.5);
+      ctx.fillStyle=`rgba(255,80,0,${0.12+0.08*Math.sin(T*3+i)})`;
+      ctx.fillRect(vx+s*0.3,s*12.2,s*2.9,s*0.8);
+    }
+
+    rivets([-s*20,-s*13,-s*10,-s*13,s*0,-s*13,s*10,-s*13,-s*20,s*13,-s*10,s*13,s*0,s*13,s*10,s*13],s*0.8,'#778899');
+
+    // Engine pods
+    for(const sv of[-1.5,-0.5,0.5,1.5]){
+      ctx.fillStyle=G(-s*24,-s*3,-s*24,s*3, 0,'#1a2244',1,'#0a1233');
+      ctx.beginPath();ctx.ellipse(-s*18,sv*s*6,s*6.5,s*3.5,0,0,Math.PI*2);ctx.fill();
+      for(let i=0;i<4;i++){
+        ctx.strokeStyle=`rgba(255,${60+i*20},0,0.3)`;ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(-s*18,sv*s*6,s*(1.5+i*1.1),0,Math.PI*2);ctx.stroke();
+      }
+      nozzle(-s*22,sv*s*6,s*3,s*2,s*5,'#ff6600',sv%1===0?P:P2);
+    }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAGMA — Lav Uzay Gemisi
+  // ═══════════════════════════════════════════════════════════════════════════
+  } else if(shipId==='magma'){
+    const s=sc*9/7.5;
+    for(let i=0;i<6;i++){
+      const dp=(T*1.4+i*0.22)%1;
+      const dx=-s*11-dp*s*20,dy=Math.sin(T*2+i*1.1)*s*3;
+      const dr=s*(1.8-dp*1.4),da=(1-dp)*0.7;
+      ctx.fillStyle=`rgba(255,${Math.floor(60+dp*80)},0,${da})`;
+      ctx.beginPath();ctx.arc(dx,dy,Math.max(0.1,dr),0,Math.PI*2);ctx.fill();
+      // Drip tail
+      ctx.strokeStyle=`rgba(255,${Math.floor(40+dp*60)},0,${da*0.4})`;ctx.lineWidth=dr*0.6;
+      ctx.beginPath();ctx.moveTo(dx,dy);ctx.lineTo(dx-s*3,dy+s*(1+dp));ctx.stroke();
+    }
+
+    // Main engine plasma — magma orange-red
+    for(const sv of[-1,1]){
+      flame(-s*10,sv*s*4,-1,0,s*2.2,s*28,'#ff4400','#cc1100',sv>0?P:P2);
+      flame(-s*10,sv*s*4,-1,0,s*0.9,s*20,'#ffaa00','#ff5500',P3);
+    }
+    // Central core exhaust
+    flame(-s*10,0,-1,0,s*1.5,s*22,'#ff6600','#cc2200',P2);
+
+    // ── Hull — volcanic rock / obsidian plates ────────────────────────────
+    // Lower belly (dark basalt)
+    ctx.fillStyle=G(0,s*2,0,s*5, 0,'#2a1008',1,'#1a0804');
+    poly(s*20,s*0.5,s*12,s*4,-s*10,s*5,-s*10,s*0.5);ctx.fill();
+
+    // Main fuselage — layered igneous rock
+    const hull=G(0,-s*6,0,s*6, 0,'#5a2810',0.25,'#7a3818',0.5,'#5a2810',0.75,'#3a1808',1,'#2a1004');
+    ctx.fillStyle=hull;
+    poly(s*22,0,s*14,-s*5,-s*10,-s*6,-s*10,s*6,s*14,s*5);ctx.fill();
+
+    // Glowing lava cracks on fuselage (main body)
+    const cracks=[
+      [s*10,-s*4,s*4,-s*2,s*1,-s*5],
+      [s*6,s*3,s*10,s*1,s*14,s*4],
+      [-s*2,-s*4,s*3,-s*3,s*5,-s*5,s*8,-s*4],
+      [s*2,s*4,s*7,s*2,s*10,s*5],
+      [-s*5,-s*3,-s*1,-s*5,s*4,-s*4],
+    ];
+    cracks.forEach(pts=>{
+      const glow=0.6+0.3*Math.sin(T*3+pts[0]);
+      ctx.strokeStyle=`rgba(255,${Math.floor(100+glow*80)},0,${glow})`;ctx.lineWidth=1.2;ctx.lineCap='round';
+      ctx.shadowColor='#ff4400';ctx.shadowBlur=6;
+      ctx.beginPath();ctx.moveTo(pts[0],pts[1]);
+      for(let i=2;i<pts.length;i+=2)ctx.lineTo(pts[i],pts[i+1]);
+      ctx.stroke();ctx.shadowBlur=0;
+      // Inner bright core of crack
+      ctx.strokeStyle=`rgba(255,220,100,${glow*0.5})`;ctx.lineWidth=0.5;
+      ctx.beginPath();ctx.moveTo(pts[0],pts[1]);
+      for(let i=2;i<pts.length;i+=2)ctx.lineTo(pts[i],pts[i+1]);
+      ctx.stroke();
+    });
+
+    // Upper armour ridge (cooled lava = darker)
+    const ridge=G(0,-s*7,0,-s*2, 0,'#3a1810',0.5,'#5a2818',1,'#3a1410');
+    ctx.fillStyle=ridge;
+    poly(s*18,0,s*10,-s*5,s*0,-s*6,-s*8,-s*6,-s*8,-s*2,s*6,-s*1.5);ctx.fill();
+    // Ridge lava seam
+    ctx.strokeStyle=`rgba(255,140,0,${0.45+0.2*P2})`;ctx.lineWidth=1;
+    ctx.shadowColor='#ff6600';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.moveTo(-s*8,-s*2);ctx.bezierCurveTo(-s*2,-s*3,s*4,-s*2,s*10,-s*4.5);ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // Volcanic wings — jagged obsidian
+    for(const sv of[-1,1]){
+      // Main wing plate
+      const wg=G(0,sv*s*4,0,sv*s*14, 0,'#3a1408',0.5,'#4a1c0c',1,'#1a0804');
+      ctx.fillStyle=wg;
+      // Jagged wing edge (volcanic rock silhouette)
+      ctx.beginPath();
+      ctx.moveTo(s*6,sv*s*5);
+      ctx.lineTo(s*2,sv*s*7);ctx.lineTo(s*4,sv*s*9);ctx.lineTo(s*0,sv*s*11);
+      ctx.lineTo(-s*2,sv*s*13);ctx.lineTo(-s*4,sv*s*12);ctx.lineTo(-s*6,sv*s*14);
+      ctx.lineTo(-s*8,sv*s*13);ctx.lineTo(-s*10,sv*s*14);ctx.lineTo(-s*10,sv*s*5);
+      ctx.closePath();ctx.fill();
+      // Lava vein network on wings
+      const veins=[
+        [s*4,sv*s*6,s*1,sv*s*9,-s*3,sv*s*12],
+        [s*0,sv*s*6,-s*3,sv*s*9,-s*6,sv*s*13],
+        [-s*5,sv*s*6,-s*7,sv*s*10,-s*8,sv*s*13],
+      ];
+      veins.forEach((vpts,vi)=>{
+        const vglow=0.5+0.3*Math.sin(T*2.5+vi*1.3+sv);
+        ctx.strokeStyle=`rgba(255,${Math.floor(80+vglow*100)},0,${vglow*0.8})`;ctx.lineWidth=1;
+        ctx.shadowColor='#ff3300';ctx.shadowBlur=5;
+        ctx.beginPath();ctx.moveTo(vpts[0],vpts[1]);
+        for(let i=2;i<vpts.length;i+=2)ctx.lineTo(vpts[i],vpts[i+1]);
+        ctx.stroke();ctx.shadowBlur=0;
+      });
+      // Wing tip lava pool
+      const tpx=-s*9,tpy=sv*s*13.5;
+      ctx.fillStyle=RG(tpx,tpy,0,tpx,tpy,s*1.5,
+        0,`rgba(255,200,50,${0.8+0.15*P3})`,0.4,`rgba(255,80,0,0.7)`,1,'transparent');
+      ctx.beginPath();ctx.arc(tpx,tpy,s*1.5,0,Math.PI*2);ctx.fill();
+    }
+
+    // ── Nose cone — sharpened volcanic spear ─────────────────────────────
+    const noseg=G(s*14,-s*1,s*24,s*1, 0,'#6a2a10',0.4,'#8a3818',1,'#3a1408');
+    ctx.fillStyle=noseg;
+    poly(s*14,-s*5,s*24,0,s*14,s*5);ctx.fill();
+    // Nose lava channels
+    for(const sv of[-1,1]){
+      ctx.strokeStyle=`rgba(255,120,0,${0.4+0.15*P2})`;ctx.lineWidth=0.9;
+      ctx.beginPath();ctx.moveTo(s*15,sv*s*1.5);ctx.lineTo(s*22,sv*s*0.5);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s*16,sv*s*3);ctx.lineTo(s*20,sv*s*1.5);ctx.stroke();
+    }
+    // Nose tip — glowing magma point
+    const ntg=RG(s*22,-s*0.5,0,s*22,0,s*2,
+      0,`rgba(255,255,150,${0.8+0.15*P3})`,0.4,'rgba(255,120,0,0.8)',1,'transparent');
+    ctx.fillStyle=ntg;ctx.beginPath();ctx.arc(s*23,0,s*2,0,Math.PI*2);ctx.fill();
+    // Sensor spike
+    ctx.strokeStyle='#cc4400';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(s*23,0);ctx.lineTo(s*27,0);ctx.stroke();
+    ctx.fillStyle=`rgba(255,200,50,${0.6+0.3*P3})`;ctx.beginPath();ctx.arc(s*27,0,s*0.7,0,Math.PI*2);ctx.fill();
+
+    // ── Cockpit — obsidian dome with lava glow ────────────────────────────
+    // Cockpit frame (rock)
+    ctx.fillStyle=G(-s*1,-s*4,s*3,s*0.5, 0,'#2a0c04',1,'#1a0804');
+    ctx.beginPath();ctx.ellipse(s*7,0,s*5.5,s*3,0,0,Math.PI*2);ctx.fill();
+    // Dark glass
+    ctx.fillStyle='rgba(15,5,2,0.9)';
+    ctx.beginPath();ctx.ellipse(s*7,0,s*4.8,s*2.5,0,0,Math.PI*2);ctx.fill();
+    // Interior lava light reflection
+    const lavaglow=RG(s*6,-s*1.5,0,s*7,0,s*3.5,
+      0,`rgba(255,80,0,${0.15+0.1*P2})`,0.5,'rgba(200,40,0,0.08)',1,'transparent');
+    ctx.fillStyle=lavaglow;
+    ctx.beginPath();ctx.ellipse(s*7,0,s*4.8,s*2.5,0,0,Math.PI*2);ctx.fill();
+    // HUD display (red/orange data)
+    ctx.fillStyle=`rgba(255,100,0,${0.2+0.1*Math.sin(T*4)})`;
+    ctx.beginPath();ctx.ellipse(s*6.5,-s*0.5,s*2.5,s*1.2,0,0,Math.PI*2);ctx.fill();
+    // Glass highlight
+    ctx.fillStyle=RG(s*5,-s*1.8,0,s*5.5,-s*1.2,s*1.8,
+      0,'rgba(255,180,140,0.4)',0.5,'rgba(200,120,80,0.12)',1,'transparent');
+    ctx.beginPath();ctx.ellipse(s*7,0,s*4.8,s*2.5,0,0,Math.PI*2);ctx.fill();
+    // Cockpit rim glow
+    ctx.strokeStyle=`rgba(255,${Math.floor(80+P*60)},0,0.55)`;ctx.lineWidth=1.2;
+    ctx.shadowColor='#ff4400';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.ellipse(s*7,0,s*4.8,s*2.5,0,0,Math.PI*2);ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // ── Lateral heat vents ────────────────────────────────────────────────
+    for(const sv of[-1,1]){
+      for(let i=0;i<4;i++){
+        const vx=-s*4+i*s*3.5,vy=sv*s*5.8;
+        ctx.fillStyle='#1a0804';ctx.fillRect(vx-s*0.8,vy,s*1.6,sv*s*0.8);
+        const vglow=0.3+0.25*Math.sin(T*4+i*0.8+sv);
+        ctx.fillStyle=`rgba(255,${Math.floor(60+vglow*80)},0,${vglow})`;
+        ctx.fillRect(vx-s*0.6,vy,s*1.2,sv*s*0.5);
+      }
+    }
+
+    // ── Spine pipes — glowing magma tubes ────────────────────────────────
+    // Main spine
+    ctx.fillStyle=G(0,-s*1.2,0,s*1.2, 0,'#3a1408',0.5,'#5a2010',1,'#3a1408');
+    ctx.fillRect(-s*8,-s*1.2,s*18,s*2.4);
+    ctx.strokeStyle='rgba(60,20,8,0.6)';ctx.lineWidth=0.8;ctx.strokeRect(-s*8,-s*1.2,s*18,s*2.4);
+    // Lava tube running through spine
+    const tubeGlow=ctx.createLinearGradient(-s*8,0,s*10,0);
+    tubeGlow.addColorStop(0,'transparent');
+    tubeGlow.addColorStop(0.2,`rgba(255,80,0,${0.2+0.1*P2})`);
+    tubeGlow.addColorStop(0.5,`rgba(255,120,0,${0.35+0.15*P})`);
+    tubeGlow.addColorStop(0.8,`rgba(255,80,0,${0.2+0.1*P2})`);
+    tubeGlow.addColorStop(1,'transparent');
+    ctx.fillStyle=tubeGlow;ctx.fillRect(-s*8,-s*0.4,s*18,s*0.8);
+
+    // Side pipes
+    for(const sv of[-1,1]){
+      pipe(-s*8,sv*s*4,s*8,sv*s*4,s*0.9,'#3a1408');
+      const pg=0.3+0.2*Math.sin(T*3+sv*1.5);
+      ctx.strokeStyle=`rgba(255,80,0,${pg})`;ctx.lineWidth=0.7;
+      ctx.beginPath();ctx.moveTo(-s*8,sv*s*4);ctx.lineTo(s*8,sv*s*4);ctx.stroke();
+    }
+
+    // ── Armour plates — volcanic basalt ───────────────────────────────────
+    for(let i=0;i<3;i++){
+      const px=-s*6+i*s*5.5;
+      ctx.fillStyle=i%2?'rgba(90,30,8,0.3)':'rgba(60,20,4,0.2)';
+      ctx.fillRect(px,-s*5.5,s*5,s*11);
+      ctx.strokeStyle='rgba(100,40,10,0.2)';ctx.lineWidth=0.7;ctx.strokeRect(px,-s*5.5,s*5,s*11);
+      // Scorch marks
+      ctx.fillStyle=`rgba(15,5,2,${0.2+0.1*i})`;
+      ctx.beginPath();ctx.ellipse(px+s*2.5,s*(i-1)*2,s*1.5,s*2.5,0.3,0,Math.PI*2);ctx.fill();
+    }
+
+    // Rivets — cooled metal bolts
+    rivets([-s*8,-s*5.5,-s*3,-s*5.5,s*2,-s*5.5,s*7,-s*5.5,
+            -s*8,s*5.5,-s*3,s*5.5,s*2,s*5.5,s*7,s*5.5],s*0.7,'#6a3018');
+
+    // ── Magma pools — surface lava lakes ─────────────────────────────────
+    [[-s*3,-s*4.5,s*1.8,s*0.8],
+     [s*5,s*3.5,s*1.4,s*0.7],
+     [-s*6,s*2,s*1.2,s*0.6]].forEach(([px2,py2,rw,rh])=>{
+      const mp=0.5+0.4*Math.sin(T*3.5+px2*0.1);
+      ctx.fillStyle=RG(px2,py2,0,px2,py2,rw,
+        0,`rgba(255,230,80,${0.7+0.25*mp})`,0.3,`rgba(255,100,0,${0.6+0.2*mp})`,0.8,'rgba(180,30,0,0.4)',1,'transparent');
+      ctx.beginPath();ctx.ellipse(px2,py2,rw,rh,0,0,Math.PI*2);ctx.fill();
+      // Surface bubbles
+      if(mp>0.7){
+        ctx.fillStyle='rgba(255,200,50,0.6)';
+        ctx.beginPath();ctx.arc(px2+rw*0.2,py2-rh*0.2,rw*0.15,0,Math.PI*2);ctx.fill();
+      }
+    });
+
+    // ── Engine pods — twin magma thrusters ────────────────────────────────
+    for(const sv of[-1,1]){
+      const eg=G(-s*12,-s*3,-s*12,s*3, 0,'#1a0804',0.5,'#2a100c',1,'#1a0804');
+      ctx.fillStyle=eg;
+      ctx.beginPath();ctx.ellipse(-s*7,sv*s*4,s*5,s*2.8,0,0,Math.PI*2);ctx.fill();
+      // Cooling bands
+      for(let i=0;i<4;i++){
+        ctx.strokeStyle=`rgba(80,20,8,${0.5+i*0.1})`;ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(-s*7,sv*s*4,s*(1.2+i*0.85),0,Math.PI*2);ctx.stroke();
+      }
+      // Lava ring around nozzle
+      ctx.strokeStyle=`rgba(255,${Math.floor(60+P*80)},0,${0.5+0.2*P})`;ctx.lineWidth=1.5;
+      ctx.shadowColor='#ff4400';ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(-s*10,sv*s*4,s*2.6,0,Math.PI*2);ctx.stroke();
+      ctx.shadowBlur=0;
+      nozzle(-s*10,sv*s*4,s*2.4,s*1.5,s*5,'#ff3300',sv>0?P:P2);
+      // Extra inner glow
+      ctx.fillStyle=RG(-s*10,sv*s*4,0,-s*10,sv*s*4,s*1.2,
+        0,`rgba(255,180,50,${0.6+0.3*P3})`,0.5,'rgba(255,60,0,0.4)',1,'transparent');
+      ctx.beginPath();ctx.arc(-s*10,sv*s*4,s*1.2,0,Math.PI*2);ctx.fill();
+    }
+
+    // ── Volcanic eruption particle halo (drifting embers) ─────────────────
+    for(let i=0;i<8;i++){
+      const ep=(T*0.8+i*0.18)%1;
+      const ea=i*Math.PI*2/8+T*0.3;
+      const er=s*(5+ep*8);
+      const ex=Math.cos(ea)*er,ey=Math.sin(ea)*er*0.5;
+      const eal=Math.sin(ep*Math.PI)*0.6;
+      ctx.fillStyle=`rgba(255,${Math.floor(60+ep*100)},0,${eal*0.5})`;
+      ctx.beginPath();ctx.arc(ex,ey,s*(0.8-ep*0.5),0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+const GAME_ZOOM=0.9; // 10% zoom out — see more of the world
+
+function draw(ts){
+  cx.clearRect(0,0,W,H);uiZones=[];
+  const t=ts*0.001;
+  if(phase==='SHOP'||phase==='LEADERBOARD'){if(phase==='SHOP')drawShop(t,ts);else drawLeaderboard(t);return;}
+
+  const z=getZone(scoreKm);
+
+  // ── Background (full screen, pure black space) ────────────────────────────
+  cx.fillStyle='#000005';cx.fillRect(0,0,W,H);
+  // Zone color tint (subtle)
+  const zoneTint=cx.createLinearGradient(0,0,0,H*0.5);
+  zoneTint.addColorStop(0,bgCol+'44');zoneTint.addColorStop(1,'transparent');
+  cx.fillStyle=zoneTint;cx.fillRect(0,0,W,H);
+
+
+  // ── Stars & Constellations ────────────────────────────────────────────────
+  const camPX=cam.x||0, camPY=cam.y||0;
+
+  for(const s of STARS){
+    // Simple: fixed screen position shifted slightly by camera (parallax)
+    let px = (s.nx * W - camPX * s.spd * 0.05 % W + W*2) % W;
+    let py = (s.ny * H - camPY * s.spd * 0.05 % H + H*2) % H;
+    const twk = s.alpha * (0.7 + 0.3 * Math.sin(t * 0.4 + s.twk));
+    cx.globalAlpha = twk;
+    cx.fillStyle = s.col;
+    if(s.bright){
+      cx.beginPath(); cx.arc(px, py, s.sz, 0, Math.PI*2); cx.fill();
+      cx.globalAlpha = twk * 0.25;
+      cx.fillRect(px - s.sz*3, py - 0.3, s.sz*6, 0.6);
+      cx.fillRect(px - 0.3, py - s.sz*3, 0.6, s.sz*6);
+    } else if(s.medium){
+      cx.beginPath(); cx.arc(px, py, s.sz, 0, Math.PI*2); cx.fill();
+    } else {
+      cx.fillRect(px, py, s.sz, s.sz);
+    }
+  }
+  cx.globalAlpha = 1;
+
+  for(const con of CONSTS){
+    const ox = (con.ax * W - camPX * con.spd * 0.03 % W + W*2) % W;
+    const oy = (con.ay * H - camPY * con.spd * 0.03 % H + H*2) % H;
+    const c2 = Math.cos(con.rot), s2 = Math.sin(con.rot), sc = con.sc;
+    const pts = con.pts.map(([x,y]) => {
+      const rx=x*sc, ry=y*sc;
+      return [ox + rx*c2 - ry*s2, oy + rx*s2 + ry*c2];
+    });
+    cx.strokeStyle = 'rgba(140,170,230,0.18)'; cx.lineWidth = 0.8;
+    for(let i=0; i<pts.length-1; i++){
+      const [x0,y0]=pts[i], [x1,y1]=pts[i+1];
+      if(Math.abs(x1-x0)>W*0.5 || Math.abs(y1-y0)>H*0.5) continue;
+      cx.beginPath(); cx.moveTo(x0,y0); cx.lineTo(x1,y1); cx.stroke();
+    }
+    for(let i=0; i<pts.length; i++){
+      const [x,y] = pts[i];
+      if(x<-20||x>W+20||y<-20||y>H+20) continue;
+      cx.fillStyle = '#c0d4f0';
+      cx.globalAlpha = i===0 ? 0.6 : 0.38;
+      cx.beginPath(); cx.arc(x, y, i===0?1.5:1.0, 0, Math.PI*2); cx.fill();
+    }
+  }
+  cx.globalAlpha = 1;
+
+  // ── If paused — skip game world, just show pause screen ──────────────────
+  if(paused){
+    drawPause(t);
+    cx.restore();
+    return;
+  }
+
+  // ── Game world (zoomed out 10%) — only during gameplay ───────────────────
+  const isPlaying=phase==='FLYING'||phase==='ORBITING';
+  if(isPlaying){
+  cx.save();
+  cx.translate(W/2,H/2);cx.scale(GAME_ZOOM,GAME_ZOOM);cx.translate(-W/2,-H/2);
+
+  if(holding&&phase==='FLYING'){
+    for(const p of planets){
+      const dd=d2(probe.x,probe.y,p.x,p.y);
+      if(dd<ROPE_LEN&&dd>p.r+PROBE_R*2){
+        const ppx=sx(p.x),ppy=sy(p.y);
+        cx.globalAlpha=(1-dd/ROPE_LEN)*0.5;
+        const hintCol=p.type==='red'?'#ffaa00':p.type==='black'?'#aa44ff':
+          p.subtype==='earth'?'#44aaff':p.subtype==='mars'?'#ff6633':
+          p.subtype==='jupiter'?'#ddaa55':p.subtype==='saturn'?'#ddcc88':
+          p.subtype==='uranus'?'#44ddcc':p.subtype==='venus'?'#ffdd44':
+          p.subtype==='mercury'?'#aabb99':p.subtype==='neptune'?'#4466ff':p.subtype==='moon'?'#ccccbb':'#aaddff';
+        cx.strokeStyle=hintCol;cx.lineWidth=1;cx.setLineDash([3,5]);
+        cx.beginPath();cx.arc(ppx,ppy,p.r+16,0,Math.PI*2);cx.stroke();
+        cx.setLineDash([]);cx.globalAlpha=1;
+      }
+    }
+  }
+
+  // Planets
+  for(const p of planets){
+    const ppx=sx(p.x),ppy=sy(p.y);
+    if(ppx<-p.r*6||ppx>W+p.r*6)continue;
+    try{drawPlanet(p,ppx,ppy,t);}
+    catch(e){console.error('drawPlanet error:',p.subtype||p.type,e.message);}
+  }
+
+  // Trail (pixel squares, color per trail)
+  const _tc=trailCol(t);
+  function drawTrailArr(arr){
+    if(arr.length<2)return;
+    // Draw as a single path per alpha band for perf
+    const len=arr.length;
+    for(let i=1;i<len;i++){
+      const ratio=i/len;
+      cx.globalAlpha=ratio*0.7;
+      cx.fillStyle=_tc;
+      const px2=pxr(sx(arr[i].x)),py2=pxr(sy(arr[i].y));
+      cx.fillRect(px2,py2,2,2);
+    }
+    cx.globalAlpha=1;
+  }
+  drawTrailArr(probe.trail);
+  if(probe.trail2.length>0)drawTrailArr(probe.trail2);
+  if(probe.trail3.length>0)drawTrailArr(probe.trail3);
+  if(probe.trail4.length>0)drawTrailArr(probe.trail4);
+
+  // Rope/tether (dashed pixel beam)
+  if(orb){
+    const rx0=pxr(sx(probe.x)),ry0=pxr(sy(probe.y));
+    const rx1=pxr(sx(orb.planet.x)),ry1=pxr(sy(orb.planet.y));
+    const hcol=orb.heat>0?`hsl(${(1-orb.heat)*110},100%,58%)`:trailCol(t);
+    cx.strokeStyle=hcol;cx.lineWidth=2;cx.globalAlpha=0.9;cx.setLineDash([4,3]);
+    cx.beginPath();cx.moveTo(rx0,ry0);cx.lineTo(rx1,ry1);cx.stroke();
+    cx.setLineDash([]);cx.globalAlpha=1;
+    cx.fillStyle='#ffffff';cx.fillRect(rx0-1,ry0-1,2,2);// joint pixel
+  }
+
+  // Sparks
+  for(const s of sparks){
+    cx.fillStyle=s.col;cx.globalAlpha=s.life;
+    cx.fillRect(pxr(sx(s.x)),pxr(sy(s.y)),s.sz,s.sz);
+    cx.globalAlpha=1;
+  }
+
+  // Ship
+  if(phase!=='MENU'){
+    const tc=trailCol(t);
+    const _shipS=(selShipDef().S)||2.5;
+    drawShip(cx,sx(probe.x),sy(probe.y),probe.ang,selShip,tc,_shipS);
+    // Orbit indicators (spin bar, heat, black hole grace)
+    if(phase==="ORBITING"&&orb){
+      const ppx=Math.round(sx(probe.x)),ppy=Math.round(sy(probe.y));
+      const bw2=64,bh2=8,bx2=ppx-bw2/2,bby=ppy-46;
+      if(orb.planet.type==="red"&&orb.heat>0){
+        const hcol=`hsl(${(1-orb.heat)*100},100%,55%)`;
+        progressBar(bx2,bby,bw2,bh2,orb.heat,hcol,'rgba(60,0,0,0.7)');
+        glowText('GÜNEŞ SICAKLIĞI',ppx,bby-4,hcol,8,6);
+      }
+      if(orb.planet.type!=="black"&&(orb.spinMult||1)>1.05){
+        const prog=Math.min(1,((orb.spinMult||1)-1)/(MAX_SPIN_MULT-1));
+        const barCol=`hsl(${(1-prog)*120},100%,55%)`;
+        progressBar(bx2,bby,bw2,bh2,prog,barCol,'rgba(0,10,30,0.7)');
+        glowText(`×${(orb.spinMult||1).toFixed(1)} HIZ`,ppx,bby-4,barCol,8,6);
+      }
+      if(orb.planet.type==="black"){
+        if((orb.graceTime||0)>0){
+          const gp2=(orb.graceTime||0)/1.8;
+          const gc=gp2>0.4?"#cc44ff":"#ff2244";
+          progressBar(bx2,bby,bw2,bh2,gp2,gc,'rgba(20,0,40,0.7)');
+          glowText('HEMEN KAÇ!',ppx,bby-4,gc,8,8);
+        } else {
+          const pulse3=0.65+0.35*Math.sin(t*10);
+          glowText('ÇEKİLİYORSUN!',ppx,bby,`rgba(255,40,40,${pulse3})`,9,12);
+        }
+      }
+    }
+  }
+
+  cx.restore(); // end game world zoom
+  } // end isPlaying
+
+  drawHUD(t,z);
+
+  if(flashAlpha>0){cx.globalAlpha=flashAlpha*0.65;cx.fillStyle=flashCol;cx.fillRect(0,0,W,H);cx.globalAlpha=1;}
+  if(announce.on&&announce.zone)drawAnnounce();
+  if(phase==='MENU')drawMenu(t,ts);
+  if(phase==='DEAD')drawDead(t);
+}
+
+// ── Premium UI System ───────────────────────────────────────────────────────
+
+// Rounded rect path (safe)
+function rr(x,y,w,h,r){
+  r=Math.max(0,Math.min(r,w/2,h/2));
+  if(r<=0){cx.beginPath();cx.rect(x,y,w,h);return;}
+  cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.arcTo(x+w,y,x+w,y+r,r);
+  cx.lineTo(x+w,y+h-r);cx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  cx.lineTo(x+r,y+h);cx.arcTo(x,y+h,x,y+h-r,r);
+  cx.lineTo(x,y+r);cx.arcTo(x,y,x+r,y,r);cx.closePath();
+}
+// Safe alpha variant of any color string
+function colA(col,a){
+  try{
+    if(col.startsWith('#')&&col.length===7){
+      const n=parseInt(col.slice(1),16);
+      return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+    }
+    if(col.startsWith('rgba')){return col.replace(/,\s*[\d.]+\s*\)/,`,${a})`);}
+    if(col.startsWith('rgb(')){return col.replace('rgb(','rgba(').replace(')',`,${a})`);}
+    if(col.startsWith('hsl(')){return col.replace('hsl(','hsla(').replace(')',`,${a})`);}
+    if(col.startsWith('hsla')){return col.replace(/,\s*[\d.]+\s*\)/,`,${a})`);}
+  }catch(e){}
+  return col;
+}
+
+// Crisp text with glow
+function ptxt(text,x,y,col,size,stroke,align='center'){
+  cx.save();
+  cx.font=`bold ${size}px Arial`;cx.textAlign=align;cx.textBaseline='alphabetic';
+  if(stroke){cx.strokeStyle=stroke;cx.lineWidth=size*0.28;cx.lineJoin='round';cx.strokeText(text,x,y);}
+  cx.fillStyle=col;cx.fillText(text,x,y);
+  cx.restore();
+}
+
+function glowText(text,x,y,col,size,blur=18,align='center'){
+  cx.save();
+  cx.font=`bold ${size}px Arial`;cx.textAlign=align;cx.textBaseline='alphabetic';
+  cx.shadowColor=col;cx.shadowBlur=blur;
+  cx.fillStyle=col;cx.fillText(text,x,y);
+  cx.shadowBlur=0;cx.fillText(text,x,y);
+  cx.restore();
+}
+
+// Glass panel
+function glassPanel(x,y,w,h,r=16,accentCol='rgba(80,160,255,0.35)',alpha=0.88){
+  cx.save();
+  // Backdrop fill
+  rr(x,y,w,h,r);
+  const bg=cx.createLinearGradient(x,y,x,y+h);
+  bg.addColorStop(0,`rgba(14,10,28,${alpha})`);
+  bg.addColorStop(1,`rgba(6,4,16,${alpha*1.05})`);
+  cx.fillStyle=bg;cx.fill();
+  // Inner top highlight
+  rr(x+1,y+1,w-2,h*0.4,r);
+  cx.fillStyle='rgba(255,255,255,0.04)';cx.fill();
+  // Border glow
+  
+  cx.strokeStyle=accentCol;cx.lineWidth=1.2;
+  rr(x,y,w,h,r);cx.stroke();
+  
+  // Inner border shimmer
+  cx.strokeStyle='rgba(255,255,255,0.07)';cx.lineWidth=1;
+  rr(x+2,y+2,w-4,h-4,r-1);cx.stroke();
+  cx.restore();
+}
+
+// Premium button with glow
+function glowBtn(x,y,w,h,col,label,fs,icon=''){
+  const r=Math.min(h*0.38,w/2);
+  cx.save();
+  // Outer glow
+  cx.shadowColor=col;cx.shadowBlur=18;
+  rr(x,y,w,h,r);
+  const bg=cx.createLinearGradient(x,y,x,y+h);
+  bg.addColorStop(0,colA(col,0.32));bg.addColorStop(1,colA(col,0.08));
+  cx.fillStyle=bg;cx.fill();
+  cx.shadowBlur=0;
+  // Border
+  cx.strokeStyle=col;cx.lineWidth=1.5;rr(x,y,w,h,r);cx.stroke();
+  // Inner shine
+  rr(x+2,y+2,w-4,h*0.44,r*0.7);
+  cx.fillStyle='rgba(255,255,255,0.1)';cx.fill();
+  // Label
+  cx.font=`bold ${fs}px Arial`;cx.textAlign='center';cx.textBaseline='middle';
+  cx.shadowColor=col;cx.shadowBlur=10;
+  cx.fillStyle='#ffffff';cx.fillText((icon?icon+' ':'')+label,x+w/2,y+h/2+1);
+  cx.shadowBlur=0;
+  cx.restore();
+}
+
+// Slim progress bar
+function progressBar(x,y,w,h,prog,col,bg='rgba(255,255,255,0.08)',r=4){
+  rr(x,y,w,h,r);cx.fillStyle=bg;cx.fill();
+  if(prog>0.01){
+    const fw=Math.max(r*2,(w-2)*prog);
+    rr(x+1,y+1,fw,h-2,Math.max(0,r-1));
+    const g=cx.createLinearGradient(x,0,x+fw,0);
+    g.addColorStop(0,colA(col,0.75));g.addColorStop(1,col);
+    cx.fillStyle=g;cx.fill();
+    rr(x+1,y+1,fw,Math.floor((h-2)*0.45),Math.max(0,r-1));
+    cx.fillStyle='rgba(255,255,255,0.25)';cx.fill();
+  }
+  cx.strokeStyle='rgba(255,255,255,0.1)';cx.lineWidth=1;
+  rr(x,y,w,h,r);cx.stroke();
+}
+
+// Coin gem
+function coinBadge(x,y,val,size=14){
+  // Circle
+  const cg=cx.createRadialGradient(x-2,y-2,0,x,y,10);
+  cg.addColorStop(0,'#ffe866');cg.addColorStop(0.6,'#ffaa00');cg.addColorStop(1,'#c86a00');
+  cx.save();
+  cx.fillStyle=cg;cx.beginPath();cx.arc(x,y,10,0,Math.PI*2);cx.fill();
+  cx.restore();
+  cx.strokeStyle='rgba(255,200,0,0.4)';cx.lineWidth=1;cx.beginPath();cx.arc(x,y,10,0,Math.PI*2);cx.stroke();
+  cx.fillStyle='rgba(255,255,255,0.5)';cx.beginPath();cx.ellipse(x-2,y-4,4,2.5,0.4,0,Math.PI*2);cx.fill();
+  cx.font=`bold 10px Arial`;cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#3a1a00';cx.fillText('★',x,y+1);
+  cx.textBaseline='alphabetic';
+  glowText(val.toLocaleString(),x+15,y+5,'#ffe060',size,8,'left');
+}
+
+// Divider line
+function divider(y,col='rgba(80,140,255,0.2)'){
+  cx.strokeStyle=col;cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(20,y);cx.lineTo(W-20,y);cx.stroke();
+}
+
+// ── HUD ────────────────────────────────────────────────────────────────────
+// ── HUD ────────────────────────────────────────────────────────────────────
+function drawHUD(t,z){
+  cx.save();
+  const CYAN='#00ffff', ORANGE='#ffaa00';
+  const FONT="'Orbitron','Trebuchet MS',Arial,sans-serif";
+
+  // ── Rounded panel helper ──────────────────────────────────────────────────
+  function panel(x,y,w,h,stroke,r=8){
+    rr(x,y,w,h,r);
+    cx.fillStyle='rgba(4,16,26,0.88)';cx.fill();
+    
+    cx.strokeStyle=stroke;cx.lineWidth=1.5;cx.stroke();
+    
+    // inner highlight strip
+    rr(x+2,y+2,w-4,Math.min(h*0.38,14),r-2);
+    cx.fillStyle='rgba(255,255,255,0.04)';cx.fill();
+  }
+
+  // ── TOP LEFT: Score + Stars ───────────────────────────────────────────────
+  const LW=Math.min(W*0.26,105), LH=52, LX=10, LY=10;
+  panel(LX,LY,LW,LH,CYAN,8);
+
+  cx.textAlign='left';cx.textBaseline='alphabetic';
+  cx.font=`bold 7px ${FONT}`;cx.fillStyle=CYAN+'88';cx.fillText(T_.score,LX+8,LY+14);
+  cx.font=`bold ${Math.min(13,LW*0.12)}px ${FONT}`;cx.fillStyle='#ffffff';
+  cx.fillText(score.toLocaleString(),LX+8,LY+28);
+  cx.font=`bold 7px ${FONT}`;cx.fillStyle=ORANGE+'88';cx.fillText(T_.stars,LX+8,LY+38);
+  cx.font=`bold ${Math.min(11,LW*0.1)}px ${FONT}`;
+  cx.fillStyle=ORANGE;cx.fillText('★ '+coins.toLocaleString(),LX+8,LY+49);
+
+  // ── TOP RIGHT: Pause button ───────────────────────────────────────────────
+  const PW=42,PH=42,PX=W-PW-10,PY=10;
+  panel(PX,PY,PW,PH,CYAN,8);
+  cx.font=`bold 16px Arial`;cx.textAlign='center';cx.textBaseline='middle';
+  cx.fillStyle=CYAN;cx.fillText(paused?'▶':'⏸',PX+PW/2,PY+PH/2);
+  cx.textBaseline='alphabetic';
+  regUI('hud_pause',PX,PY,PW,PH);
+
+  // ── TOP CENTER: Zone name ─────────────────────────────────────────────────
+  cx.font=`bold ${Math.min(12,W*0.032)}px ${FONT}`;
+  cx.textAlign='center';cx.textBaseline='alphabetic';
+  cx.fillStyle='rgba(0,255,255,0.55)';
+  cx.fillText((T_.zones?T_.zones[z.id]:null)||z.name,W/2,LY+28);
+
+  // ── Pause overlay ─────────────────────────────────────────────────────────
+  cx.restore();
+}
+
+// ── Draw Pause Screen ─────────────────────────────────────────────────────
+function drawPause(t){
+  const FONT="'Orbitron','Trebuchet MS',Arial,sans-serif";
+  const CYAN='#00ffff';
+  cx.fillStyle='#000005';cx.fillRect(0,0,W,H);
+  const pw=Math.min(W-40,300);
+  const basePh=164,langPh=pauseLangOpen?38:0,ph=basePh+langPh;
+  const px2=(W-pw)/2,py2=H/2-ph/2;
+  glassPanel(px2,py2,pw,ph,18,'rgba(0,255,255,0.28)');
+
+  cx.font=`900 ${Math.min(18,W*0.046)}px ${FONT}`;cx.textAlign='center';cx.textBaseline='middle';
+  cx.fillStyle='#ffffff';cx.fillText(T_.paused,W/2,py2+30);
+
+  const iconY=py2+58,iconH=34,iconGap=8;
+  const muteW=(pw-iconGap*3)/2,langTabW=(pw-iconGap*3)/2;
+  const muteX=px2+iconGap,langTabX=px2+iconGap+muteW+iconGap;
+
+  // Mute button
+  const isMuted=Audio.muted;
+  const muteCol=isMuted?'#ff4444':CYAN;
+  rr(muteX,iconY,muteW,iconH,8);
+  cx.fillStyle=isMuted?'rgba(80,0,0,0.5)':'rgba(0,40,70,0.5)';cx.fill();
+  cx.strokeStyle=muteCol;cx.lineWidth=1.2;rr(muteX,iconY,muteW,iconH,8);cx.stroke();
+  cx.font='bold 9px Arial';cx.textAlign='center';cx.textBaseline='middle';
+  cx.fillStyle=muteCol;
+  cx.fillText(isMuted?'🔇 KAPALI':'🔊 AÇIK',muteX+muteW/2,iconY+iconH/2);
+  cx.textBaseline='alphabetic';
+  regUI('hud_mute',muteX,iconY,muteW,iconH);
+
+  // Language tab button
+  rr(langTabX,iconY,langTabW,iconH,8);
+  cx.fillStyle=pauseLangOpen?'rgba(0,70,120,0.6)':'rgba(0,30,50,0.4)';cx.fill();
+  cx.strokeStyle=pauseLangOpen?CYAN:'rgba(0,180,255,0.3)';cx.lineWidth=1.2;
+  rr(langTabX,iconY,langTabW,iconH,8);cx.stroke();
+  cx.font='bold 9px Arial';cx.textAlign='center';cx.textBaseline='middle';
+  cx.fillStyle=pauseLangOpen?'#ffffff':CYAN;
+  cx.fillText('🌐 '+langCode.toUpperCase()+(pauseLangOpen?' ▲':' ▼'),langTabX+langTabW/2,iconY+iconH/2);
+  cx.textBaseline='alphabetic';
+  regUI('pause_lang_tab',langTabX,iconY,langTabW,iconH);
+
+  // Language picker
+  if(pauseLangOpen){
+    const ls2=['tr','en','es','fr','de','pt','ru','ar'];
+    const lbw2=Math.min(26,(pw-16)/8-3),lbh2=26;
+    const ltw2=ls2.length*(lbw2+3)-3,llx2=(W-ltw2)/2,lly2=iconY+iconH+6;
+    ls2.forEach((lc,i)=>{
+      const bx3=llx2+i*(lbw2+3);const isA=langCode===lc;
+      rr(bx3,lly2,lbw2,lbh2,4);
+      cx.fillStyle=isA?'rgba(0,255,255,0.28)':'rgba(255,255,255,0.06)';cx.fill();
+      cx.strokeStyle=isA?CYAN:'rgba(255,255,255,0.12)';cx.lineWidth=1;
+      rr(bx3,lly2,lbw2,lbh2,4);cx.stroke();
+      cx.font='bold 8px Arial';cx.textAlign='center';cx.textBaseline='middle';
+      cx.fillStyle=isA?'#ffffff':'rgba(200,200,200,0.5)';
+      cx.fillText(lc.toUpperCase(),bx3+lbw2/2,lly2+lbh2/2);
+      cx.textBaseline='alphabetic';
+      regUI('lang_'+lc,bx3,lly2,lbw2,lbh2);
+    });
+  }
+
+  // Resume
+  const rbw=Math.min(pw-32,200),rbh=46,rbx=(W-rbw)/2,rby=py2+ph-rbh-12;
+  glowBtn(rbx,rby,rbw,rbh,CYAN,T_.resume,16,'▶');
+  regUI('hud_pause',rbx,rby,rbw,rbh);
+}
+
+// ── Announce ───────────────────────────────────────────────────────────────
+function drawAnnounce(){
+  const z=announce.zone,life=announce.life;
+  const alpha=Math.min(life,1)*Math.min(life/3.5,1);
+  if(alpha<=0)return;
+  cx.save();cx.globalAlpha=alpha;
+
+  // Dim overlay
+  cx.fillStyle='rgba(0,0,10,0.55)';cx.fillRect(0,H*0.3,W,H*0.42);
+
+  // Main panel
+  const pw=Math.min(W-32,340),ph=120,px2=(W-pw)/2,py2=H/2-ph/2-10;
+  glassPanel(px2,py2,pw,ph,18,z.wc+'88');
+
+  // Zone label
+  cx.font='bold 10px Arial';cx.textAlign='center';cx.textBaseline='alphabetic';
+  cx.fillStyle=z.wc+'cc';cx.fillText(`— ${T_.zoneBanner} ${z.id+1} —`,W/2,py2+26);
+
+  // Zone name
+  glowText((T_.zones?T_.zones[z.id]:null)||z.name,W/2,py2+64,z.wc,Math.min(26,W*0.063),20);
+
+  // Sub
+  cx.font='bold 10px Arial';cx.fillStyle='rgba(220,210,255,0.65)';cx.fillText(z.sub,W/2,py2+86);
+
+  // Bonus
+  if(announce.bonus){
+    glowText(announce.bonus,W/2,py2+ph+28,'#ffe060',14,12);
+  }
+
+  cx.globalAlpha=1;cx.restore();
+}
+
+// ── Menu ───────────────────────────────────────────────────────────────────
+function drawMenu(t,ts){
+  cx.save();
+  const FONT="'Orbitron','Trebuchet MS',Arial,sans-serif";
+  const CYAN='#00ffff',GOLD='#ffaa00',PURPLE='#aa44ff';
+
+  // Semi-transparent overlay over the space background
+  cx.fillStyle='rgba(0,0,8,0.55)';cx.fillRect(0,0,W,H);
+
+  // ── Title ─────────────────────────────────────────────────────────────────
+  const tSize=Math.min(40,W*0.1);
+  const titleY=H*0.13+tSize;
+  cx.font=`900 ${tSize}px ${FONT}`;cx.textAlign='center';cx.textBaseline='alphabetic';
+  // Glow layers
+  cx.shadowColor='#6633ff';cx.shadowBlur=50;
+  cx.fillStyle='rgba(140,80,255,0.25)';cx.fillText('NOVA SLING',W/2,titleY);
+  cx.shadowColor='#00aaff';cx.shadowBlur=22;
+  cx.fillStyle='rgba(100,180,255,0.45)';cx.fillText('NOVA SLING',W/2,titleY);
+  cx.shadowBlur=0;
+  // Gradient fill
+  const tg=cx.createLinearGradient(W/2-tSize*2.8,0,W/2+tSize*2.8,0);
+  tg.addColorStop(0,'#00eeff');tg.addColorStop(0.5,'#ffffff');tg.addColorStop(1,'#cc66ff');
+  cx.fillStyle=tg;cx.fillText('NOVA SLING',W/2,titleY);
+  // Subtitle
+  cx.font=`400 ${Math.min(9,W*0.022)}px ${FONT}`;
+  cx.fillStyle='rgba(180,160,255,0.55)';cx.fillText('✦  UZAY KEŞİF GEMİSİ  ✦',W/2,titleY+14);
+  // Animated underline scan
+  const tlw=cx.measureText('NOVA SLING').width;
+  const ulp=Math.sin(t*1.5)*0.5+0.5;
+  const ulg=cx.createLinearGradient(W/2-tlw/2,0,W/2+tlw/2,0);
+  ulg.addColorStop(0,'transparent');ulg.addColorStop(Math.max(0,ulp-0.15),'transparent');
+  ulg.addColorStop(ulp,'rgba(200,180,255,0.8)');ulg.addColorStop(Math.min(1,ulp+0.15),'transparent');ulg.addColorStop(1,'transparent');
+  cx.strokeStyle=ulg;cx.lineWidth=1.5;
+  cx.beginPath();cx.moveTo(W/2-tlw/2,titleY+6);cx.lineTo(W/2+tlw/2,titleY+6);cx.stroke();
+
+  // ── Ship showcase — minimal glass card ────────────────────────────────────
+  const cardH=H*0.28,cardY=titleY+18;
+  // Subtle vignette behind ship only
+  const halo=cx.createRadialGradient(W/2,cardY+cardH*0.45,0,W/2,cardY+cardH*0.45,cardH*0.55);
+  halo.addColorStop(0,'rgba(60,100,200,0.18)');halo.addColorStop(1,'transparent');
+  cx.fillStyle=halo;cx.fillRect(0,cardY,W,cardH);
+  // Orbit rings
+  for(let r2=1;r2<=2;r2++){
+    cx.strokeStyle=`rgba(100,160,255,${0.06-r2*0.02})`;cx.lineWidth=1;
+    cx.beginPath();cx.ellipse(W/2,cardY+cardH*0.44,Math.min(W,cardH)*0.22*r2,Math.min(W,cardH)*0.07*r2,0,0,Math.PI*2);cx.stroke();
+  }
+  // Ship
+  const _mS=(selShipDef().shopS)||13.33;
+  drawShip(cx,W/2,cardY+cardH*0.44,t*0.4,selShip,trailCol(t),_mS*2.0);
+  // Ship name
+  const sn=selShipDef();
+  cx.font=`700 ${Math.min(10,W*0.026)}px ${FONT}`;cx.textAlign='center';
+  cx.fillStyle='rgba(180,210,255,0.6)';cx.fillText(shipName(selShip),W/2,cardY+cardH*0.86);
+  if(sn?.premium){cx.font=`700 8px ${FONT}`;cx.fillStyle=GOLD;cx.fillText('👑 PREMİUM',W/2,cardY+cardH*0.86+13);}
+
+  // ── Info strip ────────────────────────────────────────────────────────────
+  const stripY=cardY+cardH+4;
+  const stripW=Math.min(W-24,260),stripX=(W-stripW)/2;
+  rr(stripX,stripY,stripW,32,8);
+  cx.fillStyle='rgba(4,4,18,0.75)';cx.fill();
+  cx.strokeStyle='rgba(80,120,200,0.25)';cx.lineWidth=1;rr(stripX,stripY,stripW,32,8);cx.stroke();
+  coinBadge(stripX+18,stripY+16,coins,10);
+  cx.fillStyle='rgba(255,255,255,0.06)';cx.fillRect(stripX+stripW*0.5,stripY+5,1,22);
+  cx.font=`700 7px ${FONT}`;cx.textAlign='left';
+  cx.fillStyle='rgba(0,255,255,0.38)';cx.fillText(T_.pilot,stripX+stripW*0.52,stripY+12);
+  cx.font=`900 ${Math.min(10,stripW*0.07)}px ${FONT}`;
+  cx.fillStyle='rgba(255,255,255,0.9)';cx.fillText(nickname||'—',stripX+stripW*0.52,stripY+26);
+  regUI('change_nick',stripX+stripW*0.5,stripY,stripW*0.5,32);
+
+  // ── Buttons ───────────────────────────────────────────────────────────────
+  const bw=Math.min(W-28,270),bh=52,bx=(W-bw)/2;
+  const by1=stripY+40;
+  // Pulse ring on play
+  const pulse3=0.5+0.5*Math.sin(t*2.5);
+  cx.strokeStyle=`rgba(34,221,102,${0.1+0.08*pulse3})`;cx.lineWidth=5+pulse3*3;
+  rr(bx-4,by1-4,bw+8,bh+8,bh*0.5);cx.stroke();
+  glowBtn(bx,by1,bw,bh,'#22dd66',T_.play,21,'▶');
+  regUI('play',bx,by1,bw,bh);
+
+  const sby=by1+bh+8;
+  const sbw=(bw-8)/2;
+  glowBtn(bx,sby,sbw,38,GOLD,T_.shop,12,'★');
+  regUI('shop',bx,sby,sbw,38);
+  glowBtn(bx+sbw+8,sby,sbw,38,PURPLE,T_.leaderboard,12,'🏆');
+  regUI('leaderboard',bx+sbw+8,sby,sbw,38);
+
+  cx.font=`400 7px ${FONT}`;cx.textAlign='center';
+  cx.fillStyle='rgba(255,255,255,0.12)';
+  cx.fillText(T_.hint,W/2,sby+50);
+
+  cx.restore();
+}
+
+function drawDead(t){
+  const z=getZone(scoreKm);
+  cx.save();
+  cx.fillStyle='rgba(0,0,8,0.88)';cx.fillRect(0,0,W,H);
+
+  const pw=Math.min(W-20,360),ph=Math.min(H*0.82,470);
+  const px2=(W-pw)/2,py2=(H-ph)/2;
+  glassPanel(px2,py2,pw,ph,20,'rgba(120,80,200,0.4)');
+
+  // Death reason
+  const dr=deathMsg;
+  const dcol={'GEMİ GEZEGENİ ÇARPTI':'#ff6644',
+    'GEMİ UZAYDA KAYBOLDU':'#44aaff',
+    'HALAT ATEŞTE YANDI':'#ff8833',
+    'KARA DELİK YUTTU':'#cc44ff',
+    'ASTEROİD İSABET':'#ffaa44'}[dr]||'#ff6644';
+
+  glowText(dr,W/2,py2+38,dcol,Math.min(14,W*0.036),16);
+
+  // Divider
+  divider(py2+50,dcol+'44');
+
+  // Score
+  glowText(score.toLocaleString(),W/2,py2+100,'#ffffff',42,24);
+
+  // Zone info
+  cx.font='bold 10px Arial';cx.textAlign='center';cx.textBaseline='alphabetic';
+  cx.fillStyle='rgba(180,170,220,0.5)';
+  cx.fillText(`${z.name}  ·  ×${z.mult}  ·  ↑${scoreKm} km`,W/2,py2+118);
+
+  divider(py2+132,'rgba(255,255,255,0.08)');
+
+  // Earned coins panel
+  const cpw=pw-48,cpx2=px2+24,cpy2=py2+142;
+  glassPanel(cpx2,cpy2,cpw,50,12,'rgba(255,170,0,0.35)');
+  cx.font='bold 9px Arial';cx.textAlign='left';cx.fillStyle='rgba(255,200,80,0.6)';
+  cx.fillText('KAZANILAN',cpx2+14,cpy2+18);
+  coinBadge(cpx2+cpw-60,cpy2+25,earnedCoins,14);
+
+  cx.font='bold 10px Arial';cx.textAlign='center';cx.fillStyle='rgba(255,200,80,0.4)';
+  cx.fillText(`${T_.total}: ${coins.toLocaleString()} ★`,W/2,cpy2+78);
+
+  // New record
+  if(score>=best&&score>0){
+    const rp=0.55+0.45*Math.sin(t*4);
+    glowText(T_.newRecord,W/2,cpy2+100,`rgba(255,220,0,${rp})`,14,20);
+  }
+
+  // Stars row (3 stars based on score)
+  const starY=cpy2+(score>=best&&score>0?116:100);
+  const starCount=score>5000?3:score>1000?2:score>100?1:0;
+  for(let i=0;i<3;i++){
+    const sx3=W/2+(i-1)*32,sy3=starY;
+    const filled=i<starCount;
+    cx.save();
+    cx.shadowColor=filled?'#ffcc00':'transparent';cx.shadowBlur=filled?12:0;
+    cx.font=`bold ${filled?22:18}px Arial`;cx.textAlign='center';cx.textBaseline='middle';
+    cx.fillStyle=filled?'#ffcc00':'rgba(255,255,255,0.15)';
+    cx.fillText('★',sx3,sy3);cx.restore();
+  }
+
+  // Buttons
+  const bw=pw-40,bh=50,bx=(W-bw)/2;
+  const by1=py2+ph-bh*2-20;
+  glowBtn(bx,by1,bw,bh,'#22dd66',T_.retry,17,'▶');
+  regUI('restart',bx,by1,bw,bh);
+  const by2=by1+bh+10;
+  glowBtn(bx,by2,bw,bh,'#ffaa22',T_.shop,17,'★');
+  regUI('dead_shop',bx,by2,bw,bh);
+  const by3=by2+bh+8;
+  glowBtn(bx,by3,bw,Math.floor(bh*0.72),'#aa44ff','LİDERLİK',13,'🏆');
+  regUI('leaderboard',bx,by3,bw,Math.floor(bh*0.72));
+
+  cx.restore();
+}
+
+// ── Shop ───────────────────────────────────────────────────────────────────
+function drawShop(t,ts){
+  cx.save();
+  // Rich background
+  const sbg=cx.createRadialGradient(W/2,0,0,W/2,H,H);
+  sbg.addColorStop(0,'#0e0a1e');sbg.addColorStop(1,'#050310');
+  cx.fillStyle=sbg;cx.fillRect(0,0,W,H);
+
+  // Header glass bar
+  glassPanel(0,0,W,66,0,'rgba(80,120,255,0.35)',0.92);
+  cx.strokeStyle='rgba(80,140,255,0.3)';cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(0,66);cx.lineTo(W,66);cx.stroke();
+
+  // Back button
+  glowBtn(10,14,82,38,'#4488ff',T_.back,11,'←');
+  regUI('shop_back',10,14,82,38);
+
+  // Coins center
+  glassPanel(W/2-70,10,140,46,12,'rgba(255,170,0,0.35)');
+  coinBadge(W/2-18,33,coins,13);
+
+  // Title
+  const tbh=34,tby=70;
+  glassPanel(10,tby,W-20,tbh,10,'rgba(80,120,255,0.25)');
+  glowText('✦  UZAY ARAÇLARI  ✦',W/2,tby+tbh*0.72,'#aaccff',11,10);
+
+  // Ship grid
+  const cols=2,gapX=8,gapY=8;
+  const gridX=10,gridY=tby+tbh+8;
+  const cardW=Math.floor((W-gridX*2-gapX)/cols);
+  const cardH=168;
+
+  SHIPS.forEach((item,i)=>{
+    const col2=i%cols,row=Math.floor(i/cols);
+    const cxp=gridX+col2*(cardW+gapX),cyp=gridY+row*(cardH+gapY)-shopScroll;
+    if(cyp+cardH<gridY-10||cyp>H+10)return;
+
+    const owned=ownedShips.includes(item.id);
+    const selected=selShip===item.id;
+    const afford=!owned&&coins>=item.price;
+    const isPremium=!!item.premium;
+
+    // Card accent color
+    const accent=selected?'rgba(80,220,100,0.6)':isPremium?'rgba(255,160,0,0.5)':owned?'rgba(255,170,0,0.3)':'rgba(80,100,200,0.2)';
+    glassPanel(cxp,cyp,cardW,cardH,14,accent);
+
+    // Premium card golden shimmer overlay
+    if(isPremium&&!owned){
+      rr(cxp,cyp,cardW,cardH,14);
+      const shimmer=cx.createLinearGradient(cxp,cyp,cxp+cardW,cyp+cardH);
+      shimmer.addColorStop(0,'rgba(255,180,0,0.06)');
+      shimmer.addColorStop(0.5,'rgba(255,220,80,0.12)');
+      shimmer.addColorStop(1,'rgba(255,150,0,0.06)');
+      cx.fillStyle=shimmer;cx.fill();
+    }
+    if(selected){
+      rr(cxp,cyp,cardW,cardH,14);
+      cx.fillStyle='rgba(50,200,80,0.06)';cx.fill();
+    }
+
+    // Ship preview — clip to card area, scale down large ships
+    const _sS=Math.min((SHIPS.find(s=>s.id===item.id)?.shopS)||13.33, cardW*0.32);
+    const tc2=selected?trailCol(t):isPremium&&!owned?'rgba(255,160,0,0.5)':'rgba(80,120,200,0.7)';
+    cx.save();
+    cx.beginPath();cx.rect(cxp+4,cyp+4,cardW-8,cardH-8);cx.clip();
+    if(isPremium&&!owned)cx.globalAlpha=0.55;
+    drawShip(cx,cxp+cardW/2,cyp+58,t*0.45+i*0.8,item.id,tc2,_sS);
+    cx.restore();
+
+    // Lock icon overlay for premium
+    if(isPremium&&!owned){
+      cx.font='22px Arial';cx.textAlign='center';cx.textBaseline='middle';
+      cx.fillStyle='rgba(255,200,80,0.9)';
+      cx.fillText('🔒',cxp+cardW/2,cyp+60);
+      cx.textBaseline='alphabetic';
+    }
+
+    // Crown badge top-right for premium
+    if(isPremium){
+      const badgeX=cxp+cardW-22,badgeY=cyp+6;
+      rr(badgeX,badgeY,18,18,5);
+      const bg=cx.createLinearGradient(badgeX,badgeY,badgeX+18,badgeY+18);
+      bg.addColorStop(0,'#ffcc00');bg.addColorStop(1,'#ff8800');
+      cx.fillStyle=bg;cx.fill();
+      cx.font='11px Arial';cx.textAlign='center';cx.textBaseline='middle';
+      cx.fillStyle='#3a1a00';cx.fillText('👑',badgeX+9,badgeY+9);
+      cx.textBaseline='alphabetic';
+    }
+
+    // Name
+    const nameCol=selected?'#88ffaa':isPremium?'#ffcc44':owned?'#ffe080':'rgba(180,200,255,0.85)';
+    glowText(shipName(item.id),cxp+cardW/2,cyp+100,nameCol,10,selected?8:0);
+
+    // Button
+    const btnW=cardW-16,btnH=32,btnX=cxp+8,btnY=cyp+cardH-40;
+    if(selected){
+      glowBtn(btnX,btnY,btnW,btnH,'#33dd77',T_.selected,10,'✓');
+    } else if(owned&&!isPremium||owned&&isPremium){
+      glowBtn(btnX,btnY,btnW,btnH,'#4488ff',T_.select,11);
+      regUI('buy_ship_'+item.id,btnX,btnY,btnW,btnH);
+    } else if(isPremium){
+      // Premium purchase button — gold
+      glowBtn(btnX,btnY,btnW,btnH,'#ffaa00',item.premiumPrice||'₺49,99',10,'👑');
+      regUI('premium_ship_'+item.id,btnX,btnY,btnW,btnH);
+    } else if(item.price===0){
+      glowBtn(btnX,btnY,btnW,btnH,'#33dd77',T_.free,10,'★');
+      regUI('buy_ship_'+item.id,btnX,btnY,btnW,btnH);
+    } else if(afford){
+      glowBtn(btnX,btnY,btnW,btnH,'#ffaa22',item.price.toLocaleString(),10,'★');
+      regUI('buy_ship_'+item.id,btnX,btnY,btnW,btnH);
+    } else {
+      glowBtn(btnX,btnY,btnW,btnH,'rgba(80,80,100,0.5)',item.price.toLocaleString(),10,'★');
+    }
+  });
+  cx.restore();
+}
+
+// ── Leaderboard Screen ──────────────────────────────────────────────────────
+function drawLeaderboard(t){
+  cx.save();
+  const CYAN='#00ffff',GOLD='#ffaa00',PURPLE='#aa44ff';
+  const FONT="'Orbitron','Trebuchet MS',Arial,sans-serif";
+
+  // Background
+  const sbg=cx.createRadialGradient(W/2,0,0,W/2,H,H);
+  sbg.addColorStop(0,'#0a0818');sbg.addColorStop(1,'#040210');
+  cx.fillStyle=sbg;cx.fillRect(0,0,W,H);
+  // Grid
+  cx.fillStyle='rgba(255,255,255,0.018)';
+  for(let g=0;g<W;g+=28)cx.fillRect(g,0,1,H);
+  for(let g=0;g<H;g+=28)cx.fillRect(0,g,W,1);
+
+  // Header
+  glassPanel(0,0,W,70,0,CYAN+'55',0.95);
+  cx.strokeStyle=CYAN+'44';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,70);cx.lineTo(W,70);cx.stroke();
+
+  // Back button
+  glowBtn(10,15,78,40,CYAN,T_.back,11,'←');
+  regUI('lb_back',10,15,78,40);
+
+  // Title
+  cx.font=`900 ${Math.min(18,W*0.045)}px ${FONT}`;cx.textAlign='center';cx.textBaseline='alphabetic';
+  cx.shadowColor=PURPLE;cx.shadowBlur=20;cx.fillStyle='#ffffff';
+  cx.fillText(T_.lbTitle,W/2,48);cx.shadowBlur=0;
+
+  // Loading state
+  if(!lbLoaded){
+    cx.font=`bold 12px ${FONT}`;cx.fillStyle=CYAN+'88';cx.fillText('yükleniyor...',W/2,H/2);
+    cx.restore();return;
+  }
+
+  // Column headers
+  const tableY=80,rowH=Math.min(38,(H-tableY-20)/21);
+  const COLS={rank:10,name:48,score:W-90,km:W-10};
+  cx.font=`bold 8px ${FONT}`;cx.fillStyle='rgba(0,255,255,0.4)';
+  cx.textAlign='left'; cx.fillText('#',COLS.rank,tableY+16);
+  cx.fillText(T_.pilot,COLS.name,tableY+16);
+  cx.textAlign='right';cx.fillText('SKOR',COLS.score,tableY+16);
+  cx.fillText('KM',COLS.km,tableY+16);
+  // Divider
+  cx.strokeStyle='rgba(0,255,255,0.18)';cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(8,tableY+22);cx.lineTo(W-8,tableY+22);cx.stroke();
+
+  // Rows
+  const myRank=leaderboard.findIndex(e=>e.name===nickname&&e.score===Math.max(...leaderboard.filter(x=>x.name===nickname).map(x=>x.score)));
+
+  leaderboard.slice(0,20).forEach((e,i)=>{
+    const ry=tableY+26+i*rowH;
+    if(ry+rowH>H-10)return;
+
+    const isMe=e.name===nickname;
+    const isMeRank=isMe&&i===myRank;
+    const isTop3=i<3;
+
+    // Row bg
+    if(isMeRank||isMe){
+      rr(6,ry,W-12,rowH-3,6);
+      cx.fillStyle='rgba(0,255,255,0.08)';cx.fill();
+      cx.strokeStyle=CYAN+'44';cx.lineWidth=1;cx.stroke();
+    } else if(i%2===0){
+      cx.fillStyle='rgba(255,255,255,0.025)';cx.fillRect(6,ry,W-12,rowH-3);
+    }
+
+    // Rank badge
+    const rankCol=isTop3?[GOLD,'#cc66ff',CYAN][i]:'rgba(150,150,180,0.7)';
+    const rankSize=isTop3?Math.min(13,rowH*0.42):Math.min(10,rowH*0.35);
+    cx.font=`900 ${rankSize}px ${FONT}`;cx.textAlign='left';cx.textBaseline='middle';
+    cx.shadowColor=isTop3?rankCol:'transparent';cx.shadowBlur=isTop3?8:0;
+    cx.fillStyle=isTop3?rankCol:'rgba(150,160,190,0.8)';
+    const medal=['🥇','🥈','🥉'][i]||`${i+1}`;
+    cx.fillText(medal,COLS.rank,ry+rowH*0.45);cx.shadowBlur=0;
+
+    // Name
+    const nameFs=Math.min(11,rowH*0.36);
+    cx.font=`${isMeRank?'900':'bold'} ${nameFs}px ${FONT}`;cx.textAlign='left';
+    cx.shadowColor=isMe?CYAN:'transparent';cx.shadowBlur=isMe?8:0;
+    cx.fillStyle=isMe?CYAN:isTop3?'#ffffff':'rgba(200,210,230,0.8)';
+    cx.fillText(e.name.length>12?e.name.slice(0,11)+'…':e.name,COLS.name,ry+rowH*0.47);
+    if(isMe){cx.font=`400 7px ${FONT}`;cx.fillStyle=CYAN+'66';cx.fillText('← SEN',COLS.name+cx.measureText(e.name.slice(0,12)).width+6,ry+rowH*0.47);}
+    cx.shadowBlur=0;
+
+    // Score
+    const scFs=Math.min(12,rowH*0.38);
+    cx.font=`900 ${scFs}px ${FONT}`;cx.textAlign='right';
+    cx.fillStyle=isTop3?GOLD:'rgba(220,230,255,0.9)';
+    cx.fillText(e.score.toLocaleString(),COLS.score,ry+rowH*0.47);
+
+    // KM
+    cx.font=`bold 8px ${FONT}`;cx.fillStyle='rgba(120,160,200,0.6)';
+    cx.fillText(`${e.km}km`,COLS.km,ry+rowH*0.47);
+    cx.textBaseline='alphabetic';
+
+    // Row separator
+    if(i<19){cx.strokeStyle='rgba(255,255,255,0.05)';cx.lineWidth=1;cx.beginPath();cx.moveTo(8,ry+rowH-1);cx.lineTo(W-8,ry+rowH-1);cx.stroke();}
+  });
+
+  if(leaderboard.length===0){
+    cx.font=`bold 11px ${FONT}`;cx.textAlign='center';cx.textBaseline='middle';
+    cx.fillStyle='rgba(0,255,255,0.35)';cx.fillText('Henüz kayıt yok. İlk sen ol!',W/2,H/2);
+    cx.textBaseline='alphabetic';
+  }
+
+  cx.restore();
+}
+
+// ── Audio System ──────────────────────────────────────────────────────────────
+const Audio={
+  ctx:null, muted:false, _bgNode:null, _bgGain:null,
+  init(){
+    if(this.ctx)return;
+    try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    this._m=this.ctx.createGain();this._m.gain.value=0.5;this._m.connect(this.ctx.destination);
+  },
+  resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
+  _tone(freq,type,dur,vol,freqEnd,d=0){
+    if(!this.ctx||this.muted)return;
+    const t=this.ctx.currentTime+d;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,t);
+    if(freqEnd)o.frequency.exponentialRampToValueAtTime(Math.max(1,freqEnd),t+dur*0.85);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g);g.connect(this._m);o.start(t);o.stop(t+dur+0.05);
+  },
+  _noise(dur,vol,cf=2000,d=0){
+    if(!this.ctx||this.muted)return;
+    const t=this.ctx.currentTime+d,n=this.ctx.sampleRate*Math.min(dur+0.1,2);
+    const buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate);
+    const data=buf.getChannelData(0);for(let i=0;i<n;i++)data[i]=Math.random()*2-1;
+    const src=this.ctx.createBufferSource();src.buffer=buf;
+    const f=this.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=cf;f.Q.value=0.8;
+    const g=this.ctx.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    src.connect(f);f.connect(g);g.connect(this._m);src.start(t);src.stop(t+dur+0.05);
+  },
+  latch(){},
+  sling(){this.init();this.resume();this._tone(320,'sawtooth',0.18,0.22,80);this._noise(0.2,0.1,1200);this._tone(600,'sine',0.1,0.12,200,0.04);},
+  combo(n){this.init();this.resume();const f=[330,392,440,523,587,659,784,880][Math.min(n-1,7)];this._tone(f,'sine',0.22,0.28,f*1.5);this._tone(f*2,'sine',0.14,0.1,f*3,0.06);},
+  zoneChange(){this.init();this.resume();this._tone(110,'sine',0.6,0.18,220);this._tone(165,'sine',0.5,0.14,330,0.1);this._tone(220,'triangle',0.4,0.16,440,0.2);this._noise(0.3,0.05,400);},
+  bonus(){this.init();this.resume();this._tone(880,'sine',0.2,0.22,1200);this._tone(1320,'sine',0.12,0.12,1760,0.08);},
+  death(){this.init();this.resume();this._noise(0.8,0.45,200);this._noise(0.5,0.28,600,0.05);this._tone(80,'sawtooth',0.6,0.28,30);this._tone(50,'square',0.8,0.18,20,0.1);},
+  blackholeStart(){
+    this.init();this.resume();if(this._bgNode){try{this._bgNode.stop();}catch(e){}}
+    if(!this.ctx||this.muted)return;
+    const now=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(),lfo=this.ctx.createOscillator(),lg=this.ctx.createGain(),g=this.ctx.createGain();
+    o.type='sawtooth';o.frequency.value=40;lfo.type='sine';lfo.frequency.value=3;lg.gain.value=12;
+    lfo.connect(lg);lg.connect(o.frequency);
+    g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.16,now+0.5);
+    o.connect(g);g.connect(this._m);o.start(now);lfo.start(now);this._bgNode=o;this._bgGain=g;
+  },
+  blackholeStop(){
+    if(this._bgNode&&this.ctx){try{this._bgGain.gain.linearRampToValueAtTime(0,this.ctx.currentTime+0.3);this._bgNode.stop(this.ctx.currentTime+0.35);}catch(e){}this._bgNode=null;}
+  },
+  heatWarning(){this.init();this.resume();this._noise(0.15,0.1,3000);this._tone(200,'sawtooth',0.15,0.08,400,0.04);},
+  click(){this.init();this.resume();this._tone(600,'sine',0.06,0.14,400);},
+  asteroid(){this.init();this.resume();this._noise(0.3,0.32,800);this._tone(120,'square',0.2,0.18,60);},
+};
+
+// ── Loop ───────────────────────────────────────────────────────────────────
+function loop(ts){
+  try{update(ts);draw(ts);}
+  catch(e){console.error('NOVA SLING ERROR:',e.message,e.stack?.split('\n')[1]);}
+  requestAnimationFrame(loop);
+}
+// Error display overlay
+window.onerror=function(msg,src,line,col,err){
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;top:0;left:0;right:0;background:rgba(200,0,0,0.92);color:#fff;font:bold 12px monospace;padding:8px;z-index:9999;word-break:break-all;';
+  d.textContent=`ERR L${line}:${col} — ${msg}`;
+  document.body.appendChild(d);
+  return false;
+};
+requestAnimationFrame(ts=>{lastT=ts;loop(ts);});
+</script>
+</body>
+</html>
