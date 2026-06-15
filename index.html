@@ -919,11 +919,9 @@ function update(ts){
     if(nkm>scoreKm){scoreKm=nkm;score=Math.max(score,nkm);checkZone();}
     if(respawnGrace>0){
       respawnGrace--;
-      // Flash during grace period
-      if(respawnGrace%8<4)flashAlpha=Math.max(flashAlpha,0.15);
     }
-    if(respawnGrace<=0&&probe.x<-160||probe.x>W+160)die('oob');
-    if(probe.y>startY+H*2)die('oob');
+    if(respawnGrace<=0&&(probe.x<-160||probe.x>W+160))die('oob');
+    if(respawnGrace<=0&&probe.y>startY+H*2)die('oob');
     if(respawnGrace<=0){
       for(const p of planets){
         if(d2(probe.x,probe.y,p.x,p.y)<p.r+PROBE_R)die('planet');
@@ -4090,7 +4088,9 @@ function draw(ts){
   if(phase!=='MENU'){
     const tc=trailCol(t);
     const _shipS=(selShipDef().S)||2.5;
+    if(respawnGrace>0)cx.globalAlpha=respawnGrace%12<6?0.4:1;
     drawShip(cx,sx(probe.x),sy(probe.y),probe.ang,selShip,tc,_shipS);
+    cx.globalAlpha=1;
     // Orbit indicators (spin bar, heat, black hole grace)
     if(phase==="ORBITING"&&orb){
       const ppx=Math.round(sx(probe.x)),ppy=Math.round(sy(probe.y));
