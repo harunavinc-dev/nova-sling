@@ -121,6 +121,13 @@ const pxr=(v)=>Math.round(v);
 function load(k,d){try{const v=localStorage.getItem('ns_'+k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
 function save(k,v){try{localStorage.setItem('ns_'+k,JSON.stringify(v));}catch(e){}}
 
+// One-time reset for production launch — remove this block after first release
+if(!load('v1_launched',false)){
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith('ns_'));
+  keys.forEach(k=>localStorage.removeItem(k));
+  save('v1_launched',true);
+}
+
 let coins=load('coins',0);
 let ownedShips=load('owned_ships',['arrow']);
 let selShip=load('sel_ship','arrow');
@@ -493,12 +500,23 @@ function hideNickOverlay(){nickOverlay.style.display='none';}
 
 async function checkNickAvailable(name){
   try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&limit=1`,{
+    // Check nicknames table (primary source)
+    const res=await fetch(`${SUPA_URL}/rest/v1/nicknames?name=eq.${encodeURIComponent(name)}&limit=1`,{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     });
     if(res.ok){const d=await res.json();return d.length===0;}
   }catch(e){}
-  return true; // if check fails, allow
+  return true;
+}
+
+async function registerNickname(name){
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/nicknames`,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({name})
+    });
+  }catch(e){}
 }
 
 nickBtn.addEventListener('click',async()=>{
@@ -530,7 +548,9 @@ nickBtn.addEventListener('click',async()=>{
   // Allow: increment change counter if this is a change (not first set)
   if(nickname)nickChanges++;
   save('nick_changes',nickChanges);
-  nickname=v;saveAll();hideNickOverlay();
+  nickname=v;saveAll();
+  registerNickname(v); // register in Supabase
+  hideNickOverlay();
 });
 nickInput.addEventListener('keydown',e=>{if(e.key==='Enter')nickBtn.click();});
 nickBtn.addEventListener('mouseenter',()=>{nickBtn.style.background='rgba(0,80,40,0.95)';nickBtn.style.boxShadow='0 0 22px #22dd6688';});
