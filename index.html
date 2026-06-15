@@ -3844,7 +3844,9 @@ function drawShip(ctx,x,y,ang,shipId,col,S=16){
 const GAME_ZOOM=0.9; // v2.2 — 10% zoom out — see more of the world
 
 function draw(ts){
-  cx.clearRect(0,0,W,H);uiZones=[];
+  uiZones=[];
+  // Full canvas clear every frame — prevents pixel artifacts on mobile
+  cx.fillStyle='#000005';cx.fillRect(0,0,W,H);
   const t=ts*0.001;
   // Smooth shop scroll
   if(phase==='SHOP')shopScroll+=(shopScrollTarget-shopScroll)*0.18;
