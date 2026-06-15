@@ -846,16 +846,13 @@ function die(reason){
 
 // ── Update ─────────────────────────────────────────────────────────────────
 // ── Trail recorder — pooled objects to minimize GC ───────────────────────
-const _trailPool=Array.from({length:600},()=>({x:0,y:0}));
-let _trailPoolIdx=0;
-function _trailPt(x,y){const p=_trailPool[_trailPoolIdx++%600];p.x=x;p.y=y;return p;}
 function recordTrail(){
   const _sd=selShipDef();
   const _tS=_sd.S||7.5;
   const _tOff=_tS*4.5*0.3;
   const _ca=Math.cos(probe.ang),_sa=Math.sin(probe.ang);
   const _tx=probe.x-_ca*_tOff, _ty=probe.y-_sa*_tOff;
-  const pushArr=(arr,x,y)=>{if(arr.length>=TRAIL_LEN)arr.shift();arr.push(_trailPt(x,y));};
+  const pushArr=(arr,x,y)=>{arr.push({x,y});if(arr.length>TRAIL_LEN)arr.shift();};
   if(_sd.quadExhaust){
     const _cp=Math.cos(probe.ang+Math.PI*0.5),_sp=Math.sin(probe.ang+Math.PI*0.5);
     const _eA=_tS*4.5*0.28,_eB=_tS*4.5*0.09;
